@@ -15,7 +15,7 @@ export interface KeyServerConfig {
 }
 
 export interface SealControllerConfig {
-  /** A Sui client exposing the core API (e.g. `SuiJsonRpcClient` from `@mysten/sui/jsonRpc`). */
+  /** A Sui client exposing the core API (e.g. `SuiGrpcClient` from `@mysten/sui/grpc`). */
   suiClient: SealCompatibleClient
   /** Published `seal_policies` package id (feeds encrypt, SessionKey, and the approve PTB). */
   packageId: string
