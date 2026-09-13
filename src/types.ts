@@ -1,5 +1,43 @@
 import type { Transaction } from '@mysten/sui/transactions'
 
+/** A suggested value for a policy form field, sourced from chain state. */
+export interface FieldSuggestion {
+  value: string
+  label: string
+}
+
+/**
+ * Minimal structural subset of a Sui gRPC core client needed by `suggest`.
+ * Compatible with `SuiGrpcClient.core` from `@mysten/sui/grpc` without importing it directly.
+ */
+export interface SealSuggestClient {
+  core: {
+    listOwnedObjects(options: {
+      owner: string
+      type?: string
+      cursor?: string | null
+      limit?: number
+      include?: { json?: boolean }
+    }): Promise<{
+      objects: Array<{ objectId: string; type?: string; json?: Record<string, unknown> | null }>
+      hasNextPage: boolean
+      cursor: string | null
+    }>
+    getObject(options: {
+      objectId: string
+      include?: { json?: boolean }
+    }): Promise<{ object: { objectId: string; type?: string; json?: Record<string, unknown> | null } }>
+  }
+}
+
+/** Context passed to a provider's `suggest` method. */
+export interface SuggestContext {
+  /** The connected wallet address. */
+  account: string
+  /** Sui gRPC client (structural — any compatible client is accepted). */
+  client: SealSuggestClient
+}
+
 /** A single input field a policy needs, used to render encrypt/decrypt forms generically. */
 export interface FieldSpec {
   /** Key in the provider's params object. */
@@ -47,6 +85,14 @@ export interface SealPolicyProvider<P = Record<string, unknown>> {
 
   /** Form/rendering metadata (drives a generic, registry-driven UI). */
   describe(): PolicyDescriptor
+
+  /**
+   * Optional: suggest values for form fields by querying chain state (e.g. objects owned by the
+   * connected wallet). Returns a map of `fieldName → suggestions[]`. Only fields with non-empty
+   * suggestion arrays need be included. The UI renders a picker for those fields and falls back
+   * to a plain text input when no suggestions are available or the user opts out.
+   */
+  suggest?(context: SuggestContext): Promise<Partial<Record<string, FieldSuggestion[]>>>
 }
 
 /** Portable pointer to one sealed blob — the interchange format between encrypt and decrypt. */
