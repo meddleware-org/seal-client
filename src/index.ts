@@ -5,6 +5,7 @@
 
 export type { FieldSpec, PolicyDescriptor, SealPolicyProvider, SealedManifest, FieldSuggestion, SealSuggestClient, SuggestContext } from './types.js'
 export * from './bytes.js'
+export { parseSealedManifest, SealedManifestError } from './manifest.js'
 export { PolicyRegistry } from './registry.js'
 export { createDefaultRegistry } from './default-registry.js'
 export {

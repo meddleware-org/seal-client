@@ -30,4 +30,17 @@ describe('bytes', () => {
     const out = concatBytes(new Uint8Array([1, 2]), new Uint8Array([3]))
     expect(Array.from(out)).toEqual([1, 2, 3])
   })
+
+  it('throws on non-hex characters (F4)', () => {
+    expect(() => hexToBytes('0xgg')).toThrow(/non-hex/)
+    expect(() => hexToBytes('xyz')).toThrow(/non-hex/)
+    expect(() => hexToBytes('dead!!')).toThrow(/non-hex/)
+  })
+
+  it('accepts empty input and standard short ids', () => {
+    expect(hexToBytes('').length).toBe(0)
+    expect(hexToBytes('0x').length).toBe(0)
+    // odd-length is left-padded — expected for short ids like 0x6
+    expect(hexToBytes('0x6')).toEqual(new Uint8Array([0x06]))
+  })
 })

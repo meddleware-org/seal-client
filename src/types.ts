@@ -87,6 +87,14 @@ export interface SealPolicyProvider<P = Record<string, unknown>> {
   describe(): PolicyDescriptor
 
   /**
+   * Optional defense-in-depth: verify that `idBytes` (from the stored manifest) is consistent
+   * with `params` (supplied at decrypt time). Throw an `Error` on mismatch — indicates a
+   * corrupted manifest or a caller supplying params for a different ciphertext.
+   * Called by `SealController.decrypt` before building the approve PTB.
+   */
+  verifyId?(idBytes: Uint8Array, params: P): void
+
+  /**
    * Optional: suggest values for form fields by querying chain state (e.g. objects owned by the
    * connected wallet). Returns a map of `fieldName → suggestions[]`. Only fields with non-empty
    * suggestion arrays need be included. The UI renders a picker for those fields and falls back

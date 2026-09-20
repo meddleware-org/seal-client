@@ -52,6 +52,12 @@ export class SealController {
     private readonly cfg: SealControllerConfig,
     private readonly registry: PolicyRegistry,
   ) {
+    const ttl = cfg.sessionTtlMin ?? 10
+    if (ttl < 2) {
+      throw new Error(
+        `sessionTtlMin must be ≥ 2 (got ${ttl}); a shorter TTL leaves no window before the early-expiry guard fires`,
+      )
+    }
     this.client = new SealClient({
       suiClient: cfg.suiClient,
       serverConfigs: cfg.serverConfigs.map((s) => ({
@@ -89,7 +95,10 @@ export class SealController {
     opts: { address: string; signPersonalMessage: SignPersonalMessage },
   ): Promise<Uint8Array> {
     const provider = this.registry.get<P>(type)
+    if (id.length % 2 !== 0) throw new Error(`malformed Seal id (odd hex length): ${id}`)
     const idBytes = hexToBytes(id)
+    // Defense-in-depth: verify stored id is consistent with the supplied params.
+    provider.verifyId?.(idBytes, params)
     const sessionKey = await this.session(opts.address, opts.signPersonalMessage)
 
     const tx = new Transaction()
@@ -97,6 +106,17 @@ export class SealController {
     const txBytes = await tx.build({ client: this.cfg.suiClient, onlyTransactionKind: true })
 
     return this.client.decrypt({ data: ciphertext, sessionKey, txBytes })
+  }
+
+  /**
+   * Drop cached SessionKey(s). Call this on wallet disconnect or account change so a key minted
+   * for a previous address is never reused after reconnect — a reused session would sign key-server
+   * requests under a stale identity. With no argument, clears every cached session; with an
+   * address, clears just that one.
+   */
+  clearSession(address?: string): void {
+    if (address === undefined) this.sessions.clear()
+    else this.sessions.delete(address)
   }
 
   private async session(address: string, sign: SignPersonalMessage): Promise<SessionKey> {

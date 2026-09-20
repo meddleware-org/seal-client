@@ -8,7 +8,18 @@ export interface TimeLockParams {
 
 /** The shared on-chain Clock object id. */
 const CLOCK_ID = '0x6'
-/** Random nonce appended after the 8-byte unlock timestamp. */
+/**
+ * Random nonce appended after the 8-byte unlock timestamp.
+ *
+ * Width rationale (8 bytes / 64 bits): the prefix is an 8-byte big-endian unlock timestamp, which
+ * is low-entropy and frequently shared (many documents unlock at the same instant), so the nonce
+ * disambiguates ciphertexts that share an unlock time. 64 bits is comfortably collision-safe for
+ * the per-unlock-time population and keeps the identity compact and symmetric with the 8-byte
+ * timestamp (total 16 bytes). As with nft-gate this is a uniqueness budget, not a secrecy one — the
+ * identity is public in the manifest. The width is fixed by the on-chain
+ * `seal_policies::timelock` identity layout `[8-byte BE unlock_ms][8-byte nonce]`; do not change one
+ * side only. See SECURITY.md.
+ */
 const NONCE_LEN = 8
 
 /**

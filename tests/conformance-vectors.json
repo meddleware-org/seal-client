@@ -1,0 +1,14 @@
+{
+  "_comment": "Shared identity byte-layout conformance vectors. The Move side asserts the SAME fixed values in repos/seal-policies-sui/tests/{nft_gate,timelock}_tests.move — keep both in sync (separate repos cannot share this file). Only the deterministic prefixes are pinned; the per-ciphertext random nonce is excluded.",
+  "nftGate": {
+    "layout": "[32-byte gate object id][16-byte random nonce]",
+    "gateIdFull": "0x0000000000000000000000000000000000000000000000000000000000000123",
+    "gateIdShort": "0x123",
+    "expectedPrefixHex": "0000000000000000000000000000000000000000000000000000000000000123"
+  },
+  "timelock": {
+    "layout": "[8-byte big-endian u64 unlock_ms][8-byte random nonce]",
+    "unlockMs": 1704067200000,
+    "expectedPrefixHex": "0000018cc251f400"
+  }
+}

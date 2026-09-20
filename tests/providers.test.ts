@@ -59,3 +59,35 @@ describe('timeLockProvider', () => {
     expect(() => timeLockProvider.buildId({})).toThrowError(/requires `unlockMs`/)
   })
 })
+
+// F2: the per-policy nonce widths are intentional and documented (see each provider's NONCE_LEN
+// comment + SECURITY.md). These assertions lock the widths so a change on this side without the
+// matching on-chain `seal_policies` layout change is caught here.
+describe('nonce widths (F2)', () => {
+  it('nft-gate identity is 32-byte gate id + 16-byte nonce (48 total)', () => {
+    const id = nftGateProvider.buildId({ gateId: GATE })
+    expect(id.length).toBe(48)
+    expect(id.length - objectIdBytes(GATE).length).toBe(16) // nonce width
+  })
+
+  it('time-lock identity is 8-byte unlock + 8-byte nonce (16 total)', () => {
+    const id = timeLockProvider.buildId({ unlockMs: 1 })
+    expect(id.length).toBe(16)
+    expect(id.length - u64beBytes(1).length).toBe(8) // nonce width
+  })
+
+  it('nonces are unique per encryption (nft-gate)', () => {
+    const a = nftGateProvider.buildId({ gateId: GATE })
+    const b = nftGateProvider.buildId({ gateId: GATE })
+    // Same 32-byte prefix, different 16-byte nonce tail.
+    expect(bytesToHex(a.slice(0, 32))).toBe(bytesToHex(b.slice(0, 32)))
+    expect(bytesToHex(a.slice(32))).not.toBe(bytesToHex(b.slice(32)))
+  })
+
+  it('nonces are unique per encryption (time-lock)', () => {
+    const a = timeLockProvider.buildId({ unlockMs: 1000 })
+    const b = timeLockProvider.buildId({ unlockMs: 1000 })
+    expect(bytesToHex(a.slice(0, 8))).toBe(bytesToHex(b.slice(0, 8)))
+    expect(bytesToHex(a.slice(8))).not.toBe(bytesToHex(b.slice(8)))
+  })
+})

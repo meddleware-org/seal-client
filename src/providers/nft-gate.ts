@@ -10,7 +10,17 @@ export interface NftGateParams {
   soulbound?: boolean
 }
 
-/** Random nonce appended after the 32-byte gate id so each ciphertext gets a unique identity. */
+/**
+ * Random nonce appended after the 32-byte gate id so each ciphertext gets a unique Seal identity.
+ *
+ * Width rationale (16 bytes / 128 bits): the 32-byte prefix is the *gate id* — a stable, public
+ * value reused for every ciphertext encrypted under that gate. All per-ciphertext uniqueness
+ * therefore comes from the nonce alone, so it is sized for a negligible birthday-collision
+ * probability across an effectively unbounded ciphertext population per gate. (The identity is not
+ * secret — it is stored verbatim in the manifest — so this is a uniqueness/domain-separation
+ * budget, not a secrecy budget.) The width is fixed by the on-chain `seal_policies::nft_gate`
+ * identity layout `[32-byte gate id][16-byte nonce]`; do not change one side only. See SECURITY.md.
+ */
 const NONCE_LEN = 16
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -55,6 +65,18 @@ export function createNftGateProvider(accessGatePackageId = ''): SealPolicyProvi
 
     buildId(params) {
       return concatBytes(objectIdBytes(params.gateId), randomBytes(NONCE_LEN))
+    },
+
+    verifyId(idBytes, params) {
+      const expected = objectIdBytes(params.gateId)
+      for (let i = 0; i < 32; i++) {
+        if (idBytes[i] !== expected[i]) {
+          throw new Error(
+            `seal-client: id/params mismatch — stored id does not match params.gateId (byte ${i} differs). ` +
+            `The manifest may be corrupted or the wrong params were supplied.`,
+          )
+        }
+      }
     },
 
     buildApprove(tx, packageId, idBytes, params) {

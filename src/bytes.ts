@@ -4,6 +4,9 @@
 /** Hex (with or without `0x`) → bytes. Odd-length input is left-padded with a nibble. */
 export function hexToBytes(hex: string): Uint8Array {
   const clean = hex.startsWith('0x') || hex.startsWith('0X') ? hex.slice(2) : hex
+  if (clean.length > 0 && !/^[0-9a-fA-F]+$/.test(clean)) {
+    throw new Error(`hexToBytes: non-hex characters in input: ${hex}`)
+  }
   const padded = clean.length % 2 ? '0' + clean : clean
   const out = new Uint8Array(padded.length / 2)
   for (let i = 0; i < out.length; i++) {
