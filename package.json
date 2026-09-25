@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/seal-client",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "homepage": "https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/",
   "type": "module",
   "sideEffects": false,
