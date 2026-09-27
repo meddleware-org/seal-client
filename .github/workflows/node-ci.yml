@@ -22,5 +22,8 @@ jobs:
       - name: Type-check
         run: npm run type-check
 
+      - name: Lint JS (eslint)
+        run: npm run lint:js --if-present
+
       - name: Test
         run: npm test
