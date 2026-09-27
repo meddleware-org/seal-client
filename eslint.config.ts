@@ -1,12 +1,16 @@
-import { globalIgnores } from 'eslint/config'
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
+import { defineConfig, globalIgnores } from 'eslint/config'
+import tseslint from 'typescript-eslint'
 
-// Flat ESLint config for a TypeScript library (no Vue SFCs). Uses the shared
-// Vue+TS preset's TypeScript rules for consistency with the rest of the monorepo.
-export default defineConfigWithVueTs(
-  { name: 'seal-client/files-to-lint', files: ['**/*.{ts,mts,tsx}'] },
+// Flat ESLint config for a TypeScript library (no Vue SFCs): typescript-eslint's recommended
+// rules — the same TypeScript rule set the Vue repos get via @vue/eslint-config-typescript,
+// without that preset's Vue-only dependencies.
+export default defineConfig(
   globalIgnores(['**/dist/**', '**/coverage/**', '**/*.d.ts']),
-  vueTsConfigs.recommended,
+  {
+    name: 'seal-client/typescript',
+    files: ['**/*.{ts,mts,tsx}'],
+    extends: [tseslint.configs.recommended],
+  },
 
   {
     name: 'seal-client/overrides',
