@@ -21,7 +21,7 @@ import { createDefaultRegistry } from '../../src/default-registry.js'
 // Public Mysten Labs testnet committee — three servers, 2-of-3 threshold.
 // Server 0: committee-mode (aggregatorUrl required); servers 1-2: independent (URL on-chain).
 // These match the defaults in seal-ui/src/config.ts.
-const PACKAGE_ID = '0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e'
+const PACKAGE_ID = '0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612'
 const SERVER_CONFIGS = [
   {
     objectId: '0xb012378c9f3799fb5b1a7083da74a4069e3c3f1c93de0b27212a5799ce1e1e98',

@@ -31,7 +31,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "SEAL_TESTNET=1 vitest run tests/integration",
+    "test:integration": "SEAL_TESTNET=1 vitest run --config vitest.integration.config.ts",
     "lint:js": "eslint .",
     "lint": "npm run lint:js"
   },
