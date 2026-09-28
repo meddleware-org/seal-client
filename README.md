@@ -28,10 +28,11 @@ Built-in providers: `nft-gate` (access-gate NFT ownership) and `time-lock` (Cloc
 ## Usage
 
 ```ts
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
-import { SealController, createDefaultRegistry } from '@meddleware/seal-client'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { createDefaultRegistry } from '@meddleware/seal-client'
+import { SealController } from '@meddleware/seal-client/controller' // also on the main entry; the subpath lets apps lazy-load @mysten/seal
 
-const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('testnet') })
+const suiClient = new SuiGrpcClient({ network: 'testnet', baseUrl: 'https://fullnode.testnet.sui.io:443' })
 const registry = createDefaultRegistry() // nft-gate + time-lock
 
 const seal = new SealController(
