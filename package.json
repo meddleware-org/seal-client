@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/seal-client",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "homepage": "https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/",
   "type": "module",
   "sideEffects": false,
@@ -36,12 +36,12 @@
     "lint": "npm run lint:js"
   },
   "peerDependencies": {
-    "@mysten/seal": "^1.4.13",
-    "@mysten/sui": "^2.28.0"
+    "@mysten/seal": "^1.4.0",
+    "@mysten/sui": "^2.33.0"
   },
   "devDependencies": {
-    "@mysten/seal": "^1.4.13",
-    "@mysten/sui": "^2.28.0",
+    "@mysten/seal": "^1.4.0",
+    "@mysten/sui": "^2.33.0",
     "@types/node": "~24.12.2",
     "eslint": "^10.11.0",
     "jiti": "^2.7.0",
