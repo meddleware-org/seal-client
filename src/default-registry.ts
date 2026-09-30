@@ -6,12 +6,12 @@ import { timeLockProvider } from './providers/timelock.js'
  * A registry pre-loaded with the built-in providers (`nft-gate`, `time-lock`), registered as
  * peers in no particular priority. Consumers may `.register(...)` additional providers.
  *
- * @param accessGatePackageId - The deployed `access_gate` package ID for the target network.
- *   Pass the network-specific package ID to enable `suggest()` on the nft-gate provider.
- *   Omit (or pass `''`) to get a zero-config registry with no chain-suggestion capability.
+ * @param accessGateOriginalId - The `access_gate` package's original id on the target network, to
+ *   enable `suggest()` on the nft-gate provider. Omit (or pass `''`) for a registry with no chain
+ *   suggestions.
  */
-export function createDefaultRegistry(accessGatePackageId = ''): PolicyRegistry {
+export function createDefaultRegistry(accessGateOriginalId = ''): PolicyRegistry {
   return new PolicyRegistry()
-    .register(createNftGateProvider(accessGatePackageId))
+    .register(createNftGateProvider(accessGateOriginalId))
     .register(timeLockProvider)
 }

@@ -1,12 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Transaction } from '@mysten/sui/transactions'
-import { nftGateProvider } from '../src/providers/nft-gate.js'
+import { createNftGateProvider } from '../src/providers/nft-gate.js'
 import { timeLockProvider } from '../src/providers/timelock.js'
 import { objectIdBytes, u64beBytes, bytesToHex } from '../src/bytes.js'
 
 const GATE = '0x' + '11'.repeat(32)
 const NFT = '0x' + '22'.repeat(32)
 const PKG = '0x' + 'ab'.repeat(32)
+
+const nftGateProvider = createNftGateProvider()
 
 describe('nftGateProvider', () => {
   it('namespaces the identity to the gate (first 32 bytes) + a nonce', () => {
@@ -95,5 +97,41 @@ describe('nonce widths (F2)', () => {
     const b = timeLockProvider.buildId({ unlockMs: 1000 })
     expect(bytesToHex(a.slice(0, 8))).toBe(bytesToHex(b.slice(0, 8)))
     expect(bytesToHex(a.slice(8))).not.toBe(bytesToHex(b.slice(8)))
+  })
+})
+
+describe('nft-gate suggest', () => {
+  const ORIGINAL = '0x' + 'a1'.repeat(32)
+  const CAP = '0x' + '33'.repeat(32)
+  const client = (capType: string) => ({
+    core: {
+      listOwnedObjects: vi.fn(async ({ cursor }: { cursor?: string | null }) =>
+        cursor
+          ? { objects: [], hasNextPage: false, cursor: null }
+          : { objects: [{ objectId: CAP, type: capType, json: { gate_id: GATE } }], hasNextPage: true, cursor: 'p2' },
+      ),
+      getObject: vi.fn(async () => ({
+        object: { objectId: GATE, type: `${ORIGINAL}::access_gate::Gate`, json: { nft_name: 'Members', price_mist: '0' } },
+      })),
+    },
+  })
+
+  it('lists the gates the account administers, reading every page', async () => {
+    const c = client(`${ORIGINAL}::access_gate::AdminCap`)
+    const s = await createNftGateProvider(ORIGINAL).suggest!({ account: '0xabc', client: c })
+    expect(s).toEqual({ gateId: [{ value: GATE, label: 'Members' }] })
+    expect(c.core.listOwnedObjects).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores caps of a look-alike package', async () => {
+    const c = client(`0x${'a2'.repeat(32)}::access_gate::AdminCap`)
+    expect(await createNftGateProvider(ORIGINAL).suggest!({ account: '0xabc', client: c })).toEqual({})
+  })
+
+  it('suggests nothing without an access_gate id or account', async () => {
+    const c = client(`${ORIGINAL}::access_gate::AdminCap`)
+    expect(await createNftGateProvider().suggest!({ account: '0xabc', client: c })).toEqual({})
+    expect(await createNftGateProvider(ORIGINAL).suggest!({ account: '', client: c })).toEqual({})
+    expect(c.core.listOwnedObjects).not.toHaveBeenCalled()
   })
 })

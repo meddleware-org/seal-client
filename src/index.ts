@@ -15,12 +15,19 @@ export {
   type SignPersonalMessage,
   type EncryptResult,
 } from './controller.js'
-export { createNftGateProvider, nftGateProvider, type NftGateParams } from './providers/nft-gate.js'
+export { createNftGateProvider, type NftGateParams } from './providers/nft-gate.js'
 export { timeLockProvider, type TimeLockParams } from './providers/timelock.js'
 export {
+  buildPublishSealedContentTransaction,
   buildPublishSealedContentTx,
+  listSealedContent,
+  parseSealedContentEvent,
   SEALED_CONTENT_LIMITS,
   sealedContentEventType,
+  type ListSealedContentOptions,
+  type SealEventsClient,
   type SealedContentInput,
+  type SealedContentPage,
   type SealedContentPointer,
 } from './sealed-content.js'
+// Deployment ids are in the `@meddleware/seal-client/deployments` subpath.

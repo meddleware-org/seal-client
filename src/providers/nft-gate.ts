@@ -1,3 +1,4 @@
+import { fetchOwnedGates } from '@meddleware/access-gate-client'
 import type { SealPolicyProvider, PolicyDescriptor, FieldSuggestion, SuggestContext } from '../types.js'
 import { objectIdBytes, randomBytes, concatBytes } from '../bytes.js'
 
@@ -22,13 +23,6 @@ export interface NftGateParams {
  * identity layout `[32-byte gate id][16-byte nonce]`; do not change one side only. See SECURITY.md.
  */
 const NONCE_LEN = 16
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function structFields(v: unknown): Record<string, any> | undefined {
-  if (!v || typeof v !== 'object') return undefined
-  const o = v as Record<string, any>
-  return o.fields && typeof o.fields === 'object' ? (o.fields as Record<string, any>) : o
-}
 
 function descriptor(): PolicyDescriptor {
   return {
@@ -55,11 +49,11 @@ function descriptor(): PolicyDescriptor {
 /**
  * Create an nft-gate policy provider.
  *
- * @param accessGatePackageId - The deployed `access_gate` package ID for the target network.
- *   When non-empty, `suggest()` will query the chain for `AdminCap` objects owned by the
- *   connected wallet and surface the corresponding gates as selectable options.
+ * @param accessGateOriginalId - The `access_gate` package's **original id** on the target network
+ *   (`accessGateDeployment(network).originalId` from `@meddleware/access-gate-client/deployments`).
+ *   When non-empty, `suggest()` lists the gates the connected wallet administers.
  */
-export function createNftGateProvider(accessGatePackageId = ''): SealPolicyProvider<NftGateParams> {
+export function createNftGateProvider(accessGateOriginalId = ''): SealPolicyProvider<NftGateParams> {
   return {
     type: 'nft-gate',
 
@@ -97,36 +91,12 @@ export function createNftGateProvider(accessGatePackageId = ''): SealPolicyProvi
     describe: descriptor,
 
     async suggest({ account, client }: SuggestContext): Promise<Partial<Record<string, FieldSuggestion[]>>> {
-      if (!accessGatePackageId || !account) return {}
-      const { objects } = await client.core.listOwnedObjects({
-        owner: account,
-        type: `${accessGatePackageId}::access_gate::AdminCap`,
-        include: { json: true },
-      })
-      const caps = objects
-        .map((o) => {
-          const f = structFields(o.json)
-          const gateId = (f?.gate_id ?? f?.gateId) as string | undefined
-          return gateId ? { gateId } : null
-        })
-        .filter((c): c is { gateId: string } => c !== null)
-      if (!caps.length) return {}
-      const gates = await Promise.all(
-        caps.map(async ({ gateId }) => {
-          try {
-            const { object } = await client.core.getObject({ objectId: gateId, include: { json: true } })
-            const f = structFields(object.json)
-            const label = (f?.nft_name as string) || gateId.slice(0, 10) + '…'
-            return { value: gateId, label }
-          } catch {
-            return { value: gateId, label: gateId.slice(0, 10) + '…' }
-          }
-        }),
-      )
-      return { gateId: gates }
+      if (!accessGateOriginalId || !account) return {}
+      const gates = await fetchOwnedGates(client, account, accessGateOriginalId)
+      if (!gates.length) return {}
+      return {
+        gateId: gates.map((g) => ({ value: g.gateId, label: g.nftName || g.gateId.slice(0, 10) + '…' })),
+      }
     },
   }
 }
-
-/** @deprecated Use `createNftGateProvider(packageId)` — this zero-package-id fallback has no suggest capability. */
-export const nftGateProvider: SealPolicyProvider<NftGateParams> = createNftGateProvider()

@@ -14,6 +14,7 @@ export default defineConfig(
 
   {
     name: 'seal-client/overrides',
+    files: ['**/*.{ts,mts,tsx}'],
     rules: {
       // Underscore-prefixed args/vars are an intentional "unused" marker; rest-sibling
       // destructuring (`const { a, ...rest } = x`) is a legitimate key-omission pattern.

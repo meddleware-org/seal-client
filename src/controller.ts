@@ -21,8 +21,13 @@ export interface KeyServerConfig {
 export interface SealControllerConfig {
   /** A Sui client exposing the core API (e.g. `SuiGrpcClient` from `@mysten/sui/grpc`). */
   suiClient: SealCompatibleClient
-  /** Published `seal_policies` package id (feeds encrypt, SessionKey, and the approve PTB). */
-  packageId: string
+  /**
+   * The `seal_policies` package's **original id**: the Seal identity namespace (encrypt, the
+   * ciphertext check) and the SessionKey scope. It never changes across upgrades.
+   */
+  originalId: string
+  /** The package's latest **published-at** id: the call target of the `seal_approve*` PTB. */
+  publishedAt: string
   /** Committee of key servers: encryption targets all; decryption needs `threshold` of them. */
   serverConfigs: KeyServerConfig[]
   /** `t` in t-of-n. With a 3-server committee, 2 tolerates any one server being offline. */
@@ -95,7 +100,7 @@ export class SealController {
     const id = bytesToHex(provider.buildId(params))
     const { encryptedObject } = await this.client.encrypt({
       threshold: this.cfg.threshold,
-      packageId: this.cfg.packageId,
+      packageId: this.cfg.originalId,
       id,
       data,
     })
@@ -126,13 +131,13 @@ export class SealController {
     if (sealed.id.toLowerCase().replace(/^0x/, '') !== id.toLowerCase()) {
       throw new Error('seal-client: ciphertext identity does not match the expected Seal id')
     }
-    if (normalizeHexId(sealed.packageId) !== normalizeHexId(this.cfg.packageId)) {
+    if (normalizeHexId(sealed.packageId) !== normalizeHexId(this.cfg.originalId)) {
       throw new Error('seal-client: ciphertext was sealed under a different policy package')
     }
     const sessionKey = await this.session(opts.address, opts.signPersonalMessage)
 
     const tx = new Transaction()
-    provider.buildApprove(tx, this.cfg.packageId, idBytes, params)
+    provider.buildApprove(tx, this.cfg.publishedAt, idBytes, params)
     const txBytes = await tx.build({ client: this.cfg.suiClient, onlyTransactionKind: true })
 
     return this.client.decrypt({
@@ -156,7 +161,7 @@ export class SealController {
 
   /** Sessions are scoped to the address AND the policy package they authorise. */
   private sessionKeyId(address: string): string {
-    return `${address.toLowerCase()}:${normalizeHexId(this.cfg.packageId)}`
+    return `${address.toLowerCase()}:${normalizeHexId(this.cfg.originalId)}`
   }
 
   private async session(address: string, sign: SignPersonalMessage): Promise<SessionKey> {
@@ -166,7 +171,7 @@ export class SealController {
     const ttlMin = this.cfg.sessionTtlMin ?? 10
     const key = await SessionKey.create({
       address,
-      packageId: this.cfg.packageId,
+      packageId: this.cfg.originalId,
       ttlMin,
       suiClient: this.cfg.suiClient,
     })

@@ -26,6 +26,8 @@ jobs:
         run: npm ci
       - name: Audit dependencies
         run: npm audit --audit-level=high
+      - name: Deployment ids match @meddleware/seal-policies-sui
+        run: npm run check:deployments
       - name: Type-check
         run: npm run type-check --if-present
       - name: Unit tests

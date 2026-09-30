@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { PolicyRegistry } from '../src/registry.js'
 import { createDefaultRegistry } from '../src/default-registry.js'
-import { nftGateProvider } from '../src/providers/nft-gate.js'
+import { createNftGateProvider } from '../src/providers/nft-gate.js'
 import { timeLockProvider } from '../src/providers/timelock.js'
 
 describe('PolicyRegistry', () => {
   it('registers, looks up, and lists providers', () => {
-    const r = new PolicyRegistry().register(nftGateProvider)
+    const r = new PolicyRegistry().register(createNftGateProvider())
     expect(r.has('nft-gate')).toBe(true)
     expect(r.get('nft-gate').type).toBe('nft-gate')
     expect(r.list().map((p) => p.type)).toEqual(['nft-gate'])
