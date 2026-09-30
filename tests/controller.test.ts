@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Stub @mysten/seal so no key-server IO happens: SealClient.decrypt returns bytes, and
 // SessionKey.create returns a fake key. We only care about the SessionKey caching/eviction here.
 // `vi.hoisted` makes createSpy available inside the hoisted vi.mock factory.
-const { createSpy } = vi.hoisted(() => ({
+const { createSpy, parseSpy } = vi.hoisted(() => ({
   createSpy: vi.fn(async () => ({
     getPersonalMessage: () => new Uint8Array([1, 2, 3]),
     setPersonalMessageSignature: vi.fn(async () => {}),
   })),
+  // The parsed ciphertext header: by default it matches the id '00' under package 0x1.
+  parseSpy: vi.fn(() => ({ id: '00', packageId: '0x1' })),
 }))
 
 vi.mock('@mysten/seal', () => ({
@@ -21,6 +23,7 @@ vi.mock('@mysten/seal', () => ({
     }
   },
   SessionKey: { create: createSpy },
+  EncryptedObject: { parse: parseSpy },
 }))
 
 import { SealController } from '../src/controller.js'
@@ -40,13 +43,14 @@ const noopProvider: SealPolicyProvider = {
 function makeController() {
   const registry = new PolicyRegistry().register(noopProvider)
   const suiClient = {} as never
-  const cfg = { suiClient, packageId: '0x1', serverConfigs: [], threshold: 1 }
+  const cfg = { suiClient, packageId: '0x1', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
   return new SealController(cfg, registry)
 }
 
 const opts = { address: '0xabc', signPersonalMessage: vi.fn(async () => ({ signature: 'sig' })) }
 
 beforeEach(() => {
+  parseSpy.mockImplementation(() => ({ id: '00', packageId: '0x1' }))
   createSpy.mockClear()
   opts.signPersonalMessage.mockClear()
 })
@@ -69,7 +73,7 @@ describe('nft-gate provider verifyId (F5 — id↔params cross-check)', () => {
   it('controller rejects decrypt with mismatched id/params before PTB build', async () => {
     const registry = new PolicyRegistry().register(createNftGateProvider())
     const suiClient = {} as never
-    const cfg = { suiClient, packageId: '0x1', serverConfigs: [], threshold: 1 }
+    const cfg = { suiClient, packageId: '0x1', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
     const c = new SealController(cfg, registry)
     const wrongGateId = '0x' + 'ff'.repeat(32)
     const idBytes = concatBytes(objectIdBytes(wrongGateId), randomBytes(16))
@@ -103,5 +107,32 @@ describe('SealController SessionKey lifecycle', () => {
     c.clearSession()
     await c.decrypt('noop', {}, '00', new Uint8Array(), opts)
     expect(createSpy).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('SealController ciphertext and committee checks', () => {
+  it('refuses to decrypt a ciphertext sealed to a different identity', async () => {
+    parseSpy.mockImplementation(() => ({ id: 'ff', packageId: '0x1' }))
+    await expect(makeController().decrypt('noop', {}, '00', new Uint8Array(), opts)).rejects.toThrow(
+      /identity does not match/,
+    )
+  })
+
+  it('refuses to decrypt a ciphertext sealed under another policy package', async () => {
+    parseSpy.mockImplementation(() => ({ id: '00', packageId: '0x2' }))
+    await expect(makeController().decrypt('noop', {}, '00', new Uint8Array(), opts)).rejects.toThrow(
+      /different policy package/,
+    )
+  })
+
+  it('rejects a threshold above the total server weight', () => {
+    const registry = new PolicyRegistry().register(noopProvider)
+    expect(
+      () =>
+        new SealController(
+          { suiClient: {} as never, packageId: '0x1', serverConfigs: [{ objectId: '0xs' }], threshold: 2 },
+          registry,
+        ),
+    ).toThrow(/threshold/)
   })
 })

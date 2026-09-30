@@ -13,15 +13,31 @@ export interface SealedContentInput {
 }
 
 /**
+ * Byte limits `sealed_content::publish` enforces on its strings (mirrors the Move constants
+ * `MAX_LABEL_BYTES` / `MAX_BLOB_ID_BYTES` / `MAX_SEAL_ID_BYTES`).
+ */
+export const SEALED_CONTENT_LIMITS = Object.freeze({ label: 256, blobId: 128, sealId: 256 })
+
+/**
  * Append `seal_policies::sealed_content::publish(...)` to `tx`. Sharing a `SealedContent` makes the
  * content discoverable by a gate's pass-holders (via the `SealedContentPublished` event). The
  * pointer grants nothing on its own — confidentiality is enforced by Seal + `nft_gate`.
+ *
+ * @throws {Error} if a string exceeds its {@link SEALED_CONTENT_LIMITS} byte limit (UTF-8), which
+ *   the Move function would reject.
  */
 export function buildPublishSealedContentTx(
   tx: Transaction,
   packageId: string,
   input: SealedContentInput,
 ): void {
+  const enc = new TextEncoder()
+  for (const [field, max] of Object.entries(SEALED_CONTENT_LIMITS) as [keyof typeof SEALED_CONTENT_LIMITS, number][]) {
+    const bytes = enc.encode(input[field]).length
+    if (bytes > max) {
+      throw new Error(`seal-client: ${field} is ${bytes} bytes; sealed_content::publish accepts at most ${max}`)
+    }
+  }
   tx.moveCall({
     target: `${packageId}::sealed_content::publish`,
     arguments: [

@@ -29,9 +29,17 @@ one Move module 1:1.
 - **SessionKey is signed once, cached until expiry.** `decrypt` mints a `SessionKey` per address via
   a single wallet personal-message signature and caches it, expiring a minute early so a
   just-expired key is never handed to a key server.
-- **Committee mode is testnet-only today.** Independent key servers (each with an `aggregatorUrl`)
-  and `verifyKeyServers` are gated to testnet; the mainnet-pending path is tracked in the Sealed
-  Storage plan and mirrored by `seal-ui`'s `SEAL_CONFIGURED` gating.
+- **Key-server safety defaults (2026-09-29, workspace grounding log D4/D5).**
+  - `threshold` must be an integer in `[1, total server weight]`; anything else throws at construction.
+  - `verifyKeyServers` defaults to `true` unless a server entry uses an `aggregatorUrl` (committee
+    mode), where the aggregator fronts the committee and per-server verification does not apply.
+  - `checkShareConsistency` defaults to `true` on decrypt.
+  - Before requesting keys, `decrypt` parses the ciphertext header (`EncryptedObject.parse`) and
+    refuses a ciphertext whose identity or policy package differs from the expected ones.
+  - A committee counts as **one** server: the mainnet verified committee behind the Mysten mainnet
+    aggregator is used at threshold 1 (its 5-of-8 is internal) and needs an Enoki API key
+    (`KeyServerConfig.apiKeyName` / `apiKey`, default header `X-API-Key`).
+  - SessionKeys are cached in memory only, keyed by address **and** package.
 - **`@mysten/seal` + `@mysten/sui` are peer deps.** The consuming app supplies a single instance;
   this package must not bundle its own.
 

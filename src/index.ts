@@ -19,6 +19,7 @@ export { createNftGateProvider, nftGateProvider, type NftGateParams } from './pr
 export { timeLockProvider, type TimeLockParams } from './providers/timelock.js'
 export {
   buildPublishSealedContentTx,
+  SEALED_CONTENT_LIMITS,
   sealedContentEventType,
   type SealedContentInput,
   type SealedContentPointer,

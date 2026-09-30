@@ -58,6 +58,12 @@ describe('timeLockProvider', () => {
   it('requires unlockMs to encrypt', () => {
     expect(() => timeLockProvider.buildId({})).toThrowError(/requires `unlockMs`/)
   })
+
+  it('accepts only the 16-byte [unlock_ms][nonce] layout on decrypt', () => {
+    const id = timeLockProvider.buildId({ unlockMs: 1 })
+    expect(() => timeLockProvider.verifyId?.(id, {})).not.toThrow()
+    expect(() => timeLockProvider.verifyId?.(id.slice(0, 8), {})).toThrowError(/16 bytes/)
+  })
 })
 
 // F2: the per-policy nonce widths are intentional and documented (see each provider's NONCE_LEN

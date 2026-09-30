@@ -37,6 +37,16 @@ export const timeLockProvider: SealPolicyProvider<TimeLockParams> = {
     return concatBytes(u64beBytes(params.unlockMs), randomBytes(NONCE_LEN))
   },
 
+  verifyId(idBytes) {
+    // Layout `[8-byte BE unlock_ms][8-byte nonce]` — anything else cannot have been produced by
+    // buildId and would be rejected on-chain.
+    if (idBytes.length !== 8 + NONCE_LEN) {
+      throw new Error(
+        `seal-client: time-lock id must be ${8 + NONCE_LEN} bytes ([unlock_ms][nonce]); got ${idBytes.length}`,
+      )
+    }
+  },
+
   buildApprove(tx, packageId, idBytes) {
     tx.moveCall({
       target: `${packageId}::timelock::seal_approve`,

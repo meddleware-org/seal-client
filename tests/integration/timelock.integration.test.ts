@@ -88,6 +88,28 @@ describe.skipIf(process.env.SEAL_TESTNET !== '1')(
     )
 
     it(
+      'refuses to release keys before the unlock time (future time-lock)',
+      async () => {
+        const suiClient = makeSuiClient()
+        const controller = makeController(suiClient)
+        const keypair = new Ed25519Keypair()
+        const address = keypair.getPublicKey().toSuiAddress()
+        const signPersonalMessage = async (message: Uint8Array) => keypair.signPersonalMessage(message)
+
+        const plaintext = new TextEncoder().encode('not yet')
+        const unlockMs = Date.now() + 24 * 60 * 60_000 // a day in the future
+        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs }, plaintext)
+
+        // The key servers dry-run `seal_approve`; the on-chain Clock check aborts, so no shares
+        // are released and decryption fails closed.
+        await expect(
+          controller.decrypt('time-lock', {}, id, ciphertext, { address, signPersonalMessage }),
+        ).rejects.toThrow()
+      },
+      120_000,
+    )
+
+    it(
       'clearSession evicts the cached SessionKey so a second decrypt re-signs',
       async () => {
         const suiClient = makeSuiClient()

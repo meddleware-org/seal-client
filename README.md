@@ -63,8 +63,14 @@ const plaintext = await seal.decrypt(
 )
 ```
 
-Committee mode (independent key servers with `aggregatorUrl`) is **testnet-only** today; see the
-Sealed Storage plan for the mainnet-pending path.
+A key-server committee reached through an aggregator (`aggregatorUrl`) counts as **one** server
+(its own threshold is internal). On mainnet, use the verified committee behind the Mysten mainnet
+aggregator at `threshold: 1`; that aggregator needs an Enoki API key, passed per server as
+`{ apiKeyName: 'X-API-Key', apiKey }`.
+
+Safety defaults: the threshold must lie in `[1, total weight]`; `verifyKeyServers` is on unless a
+server uses an aggregator; `checkShareConsistency` is on; and `decrypt` refuses a ciphertext whose
+header names a different identity or policy package than expected.
 
 ## Adding a policy type
 
