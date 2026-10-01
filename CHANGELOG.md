@@ -3,6 +3,14 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.10] - 2026-10-01
+
+### Changed
+
+- `deployments` regenerated from `@meddleware/seal-policies-sui@0.0.5`: testnet `publishedAt` is now
+  `0x8fcf9c39…15cb` (seal_policies v2, D9 string bounds on-chain). `originalId` is unchanged, so
+  existing ciphertexts and identities still decrypt.
+
 ## [0.0.9] - 2026-09-30
 
 ### Added
