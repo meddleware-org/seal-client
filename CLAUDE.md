@@ -72,6 +72,13 @@ one Move module 1:1.
 | `src/bytes.ts` | Hex/id/u64-BE/nonce/concat helpers — the single source of identity-byte truth. |
 | `src/index.ts` | Public surface (types, registry, controller, providers, sealed-content helpers). |
 
+## ABI drift
+
+`tests/abi-table.ts` lists every exported builder and every default-registry provider; the offline
+test fails if one is missing. `npm run test:integration` checks each Move call against the recorded
+testnet `publishedAt` (public or entry, same type-parameter and parameter counts, trailing
+`TxContext` excluded) and that `publishedAt` is the package's latest version.
+
 ## What NOT to do
 
 - Do not put policy-specific behaviour in `SealController`; write a provider.

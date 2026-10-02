@@ -143,6 +143,8 @@ page.pointers // newest first; page.cursor continues
 1. Add a Move module `seal_policies::<policy>` exposing `entry fun seal_approve(id, …)`.
 2. Implement a `SealPolicyProvider` here whose `buildId`/`buildApprove` match that module.
 3. `registry.register(myProvider)`. No changes to existing providers or the controller.
+4. If it ships in the default registry, add it to `PROVIDERS` in `tests/abi-table.ts` (the offline
+   test fails until you do); the testnet ABI-drift check then covers its `seal_approve*`.
 
 ## Scripts
 
@@ -150,7 +152,7 @@ page.pointers // newest first; page.cursor continues
 npm run type-check
 npm test
 npm run check:deployments   # src/deployments.ts matches @meddleware/seal-policies-sui
-npm run test:integration    # live testnet (key servers + full node)
+npm run test:integration    # live testnet (key servers + full node, ABI drift)
 ```
 
 ## License
