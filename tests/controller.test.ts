@@ -43,7 +43,7 @@ const noopProvider: SealPolicyProvider = {
 function makeController() {
   const registry = new PolicyRegistry().register(noopProvider)
   const suiClient = {} as never
-  const cfg = { suiClient, originalId: '0x1', publishedAt: '0x1', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
+  const cfg = { suiClient, originalId: '0x1', publishedAt: '0x1', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
   return new SealController(cfg, registry)
 }
 
@@ -73,7 +73,7 @@ describe('nft-gate provider verifyId (F5 — id↔params cross-check)', () => {
   it('controller rejects decrypt with mismatched id/params before PTB build', async () => {
     const registry = new PolicyRegistry().register(createNftGateProvider())
     const suiClient = {} as never
-    const cfg = { suiClient, originalId: '0x1', publishedAt: '0x1', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
+    const cfg = { suiClient, originalId: '0x1', publishedAt: '0x1', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
     const c = new SealController(cfg, registry)
     const wrongGateId = '0x' + 'ff'.repeat(32)
     const idBytes = concatBytes(objectIdBytes(wrongGateId), randomBytes(16))
@@ -130,7 +130,7 @@ describe('SealController ciphertext and committee checks', () => {
     expect(
       () =>
         new SealController(
-          { suiClient: {} as never, originalId: '0x1', publishedAt: '0x1', serverConfigs: [{ objectId: '0xs' }], threshold: 2 },
+          { suiClient: {} as never, originalId: '0x1', publishedAt: '0x1', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 2 },
           registry,
         ),
     ).toThrow(/threshold/)
@@ -139,21 +139,21 @@ describe('SealController ciphertext and committee checks', () => {
 
 describe('SealController after a package upgrade', () => {
   it('seals and scopes sessions at the original id, and calls seal_approve at published-at', async () => {
-    const approveTargets: string[] = []
-    const recording: SealPolicyProvider = { ...noopProvider, buildApprove: (_tx, pkg) => void approveTargets.push(pkg) }
+    const approveTargets: Array<{ publishedAt: string; policyConfigId: string }> = []
+    const recording: SealPolicyProvider = { ...noopProvider, buildApprove: (_tx, target) => void approveTargets.push(target) }
     const c = new SealController(
-      { suiClient: {} as never, originalId: '0x1', publishedAt: '0x9', serverConfigs: [{ objectId: '0xs' }], threshold: 1 },
+      { suiClient: {} as never, originalId: '0x1', publishedAt: '0x9', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 1 },
       new PolicyRegistry().register(recording),
     )
     await c.decrypt('noop', {}, '00', new Uint8Array(), opts)
-    expect(approveTargets).toEqual(['0x9'])
+    expect(approveTargets).toEqual([{ publishedAt: '0x9', policyConfigId: '0x7' }])
     expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ packageId: '0x1' }))
   })
 
   it('refuses a ciphertext sealed under the published-at id instead of the original', async () => {
     parseSpy.mockImplementation(() => ({ id: '00', packageId: '0x9' }))
     const c = new SealController(
-      { suiClient: {} as never, originalId: '0x1', publishedAt: '0x9', serverConfigs: [{ objectId: '0xs' }], threshold: 1 },
+      { suiClient: {} as never, originalId: '0x1', publishedAt: '0x9', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 1 },
       new PolicyRegistry().register(noopProvider),
     )
     await expect(c.decrypt('noop', {}, '00', new Uint8Array(), opts)).rejects.toThrow('different policy package')

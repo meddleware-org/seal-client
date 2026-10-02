@@ -3,6 +3,23 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.11] - 2026-10-02
+
+Follows the version-gated `seal_policies` republish (testnet `0x61c4aa…`,
+`@meddleware/seal-policies-sui` 0.0.6). Content sealed under the superseded `0x42cc18…` needs that
+package's ids to decrypt; this release targets the new one.
+
+### Changed
+
+- **`SealPolicyProvider.buildApprove(tx, target, idBytes, params)`** — `target` is a
+  `SealPolicyTarget` (`{ publishedAt, policyConfigId }`); both built-in providers pass the
+  `PolicyConfig` after the identity.
+- **`SealControllerConfig.policyConfigId`** is required.
+- **`buildPublishSealedContentTransaction` / `buildPublishSealedContentTx`** take a `SealPolicyTarget`
+  and pass the `PolicyConfig` first.
+- **`./deployments`** adds `policyConfigId`; regenerated from `@meddleware/seal-policies-sui` 0.0.6.
+- **`@meddleware/access-gate-client` `^0.0.2`** (the version-gated access_gate).
+
 ## [0.0.10] - 2026-10-01
 
 ### Changed

@@ -7,6 +7,8 @@ import { objectIdBytes, u64beBytes, bytesToHex } from '../src/bytes.js'
 const GATE = '0x' + '11'.repeat(32)
 const NFT = '0x' + '22'.repeat(32)
 const PKG = '0x' + 'ab'.repeat(32)
+const POLICY = '0x' + 'cc'.repeat(32)
+const TARGET = { publishedAt: PKG, policyConfigId: POLICY }
 
 const nftGateProvider = createNftGateProvider()
 
@@ -20,24 +22,34 @@ describe('nftGateProvider', () => {
   it('builds a seal_approve move call for a transferable pass', () => {
     const tx = new Transaction()
     const id = nftGateProvider.buildId({ gateId: GATE })
-    nftGateProvider.buildApprove(tx, PKG, id, { gateId: GATE, nftId: NFT, soulbound: false })
+    nftGateProvider.buildApprove(tx, TARGET, id, { gateId: GATE, nftId: NFT, soulbound: false })
     const json = JSON.stringify(tx.getData())
     expect(json).toContain('nft_gate')
     expect(json).toContain('seal_approve')
     expect(json).not.toContain('seal_approve_soulbound')
   })
 
+  it('passes (id, PolicyConfig, gate, nft) in that order', () => {
+    const tx = new Transaction()
+    nftGateProvider.buildApprove(tx, TARGET, nftGateProvider.buildId({ gateId: GATE }), { gateId: GATE, nftId: NFT })
+    const data = tx.getData()
+    const call = data.commands[0].MoveCall!
+    expect(call.package).toBe(PKG)
+    const objectIds = call.arguments.slice(1).map((a) => (a as { Input: number }).Input).map((i) => data.inputs[i].UnresolvedObject?.objectId)
+    expect(objectIds).toEqual([POLICY, GATE, NFT])
+  })
+
   it('selects the soulbound entry when requested', () => {
     const tx = new Transaction()
     const id = nftGateProvider.buildId({ gateId: GATE })
-    nftGateProvider.buildApprove(tx, PKG, id, { gateId: GATE, nftId: NFT, soulbound: true })
+    nftGateProvider.buildApprove(tx, TARGET, id, { gateId: GATE, nftId: NFT, soulbound: true })
     expect(JSON.stringify(tx.getData())).toContain('seal_approve_soulbound')
   })
 
   it('requires an nftId to decrypt', () => {
     const tx = new Transaction()
     const id = nftGateProvider.buildId({ gateId: GATE })
-    expect(() => nftGateProvider.buildApprove(tx, PKG, id, { gateId: GATE })).toThrowError(
+    expect(() => nftGateProvider.buildApprove(tx, TARGET, id, { gateId: GATE })).toThrowError(
       /requires `nftId`/,
     )
   })
@@ -53,8 +65,12 @@ describe('timeLockProvider', () => {
   it('builds a timelock seal_approve move call over the Clock', () => {
     const tx = new Transaction()
     const id = timeLockProvider.buildId({ unlockMs: 1000 })
-    timeLockProvider.buildApprove(tx, PKG, id, {})
-    expect(JSON.stringify(tx.getData())).toContain('timelock')
+    timeLockProvider.buildApprove(tx, TARGET, id, {})
+    const data = tx.getData()
+    expect(JSON.stringify(data)).toContain('timelock')
+    const call = data.commands[0].MoveCall!
+    const objectIds = call.arguments.slice(1).map((a) => (a as { Input: number }).Input).map((i) => data.inputs[i].UnresolvedObject?.objectId)
+    expect(objectIds).toEqual([POLICY, '0x0000000000000000000000000000000000000000000000000000000000000006'])
   })
 
   it('requires unlockMs to encrypt', () => {

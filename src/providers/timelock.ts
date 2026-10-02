@@ -47,10 +47,10 @@ export const timeLockProvider: SealPolicyProvider<TimeLockParams> = {
     }
   },
 
-  buildApprove(tx, packageId, idBytes) {
+  buildApprove(tx, target, idBytes) {
     tx.moveCall({
-      target: `${packageId}::timelock::seal_approve`,
-      arguments: [tx.pure.vector('u8', Array.from(idBytes)), tx.object(CLOCK_ID)],
+      target: `${target.publishedAt}::timelock::seal_approve`,
+      arguments: [tx.pure.vector('u8', Array.from(idBytes)), tx.object(target.policyConfigId), tx.object(CLOCK_ID)],
     })
   },
 

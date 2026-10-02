@@ -43,7 +43,8 @@ const registry = createDefaultRegistry(accessGateDeployment('testnet').originalI
 const seal = new SealController(
   {
     suiClient,
-    // originalId: Seal identity namespace + SessionKey scope; publishedAt: seal_approve call target
+    // originalId: Seal identity namespace + SessionKey scope; publishedAt: seal_approve call target;
+    // policyConfigId: the shared version gate every seal_approve reads
     ...sealPoliciesDeployment('testnet'),
     threshold: 2,
     serverConfigs: [
@@ -80,22 +81,27 @@ header names a different identity or policy package than expected.
 
 ## Package ids
 
-`seal_policies` has two ids per network, and they differ once the package is upgraded:
+`seal_policies` has two package ids per network, and they differ once the package is upgraded:
 
 - **`originalId`** — Seal binds identities to it. It is used to encrypt, to scope the SessionKey,
   and to match events.
 - **`publishedAt`** — the latest version. `seal_approve*` and `sealed_content::publish` are called
   on it.
 
-Both come from `@meddleware/seal-client/deployments`, which is generated from the `Published.toml`
-that `@meddleware/seal-policies-sui` publishes.
+It also has one shared object, **`policyConfigId`** (`PolicyConfig`): every `seal_approve*` and
+`sealed_content::publish` takes it and aborts (`config::E_WRONG_VERSION`) under a retired package
+version, so an upgrade can retire old code everywhere at once.
+
+All three come from `@meddleware/seal-client/deployments`, which is generated from the
+`Published.toml` and `deployments.json` that `@meddleware/seal-policies-sui` publishes. Pass
+`{ publishedAt, policyConfigId }` (a `SealPolicyTarget`) wherever a call target is needed.
 
 ## Sealed-content discovery
 
 ```ts
 import { buildPublishSealedContentTransaction, listSealedContent } from '@meddleware/seal-client'
 
-const tx = buildPublishSealedContentTransaction(publishedAt, { gateId, blobId, sealId, label })
+const tx = buildPublishSealedContentTransaction({ publishedAt, policyConfigId }, { gateId, blobId, sealId, label })
 
 const page = await listSealedContent(suiClient, {
   originalId,

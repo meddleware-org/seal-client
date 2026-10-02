@@ -62,6 +62,16 @@ export interface PolicyDescriptor {
 }
 
 /**
+ * Where a `seal_policies` call goes: the package's latest published-at (call target) and its shared
+ * `PolicyConfig` (the version gate every `seal_approve*` and `sealed_content::publish` reads).
+ * `sealPoliciesDeployment(network)` from `@meddleware/seal-client/deployments` supplies both.
+ */
+export interface SealPolicyTarget {
+  publishedAt: string
+  policyConfigId: string
+}
+
+/**
  * A Seal access policy, mirrored 1:1 with a `seal_policies` Move module. Providers are peers —
  * none is privileged. Adding a policy type is a new provider here + a new Move module; existing
  * code is untouched.
@@ -78,10 +88,11 @@ export interface SealPolicyProvider<P = Record<string, unknown>> {
   buildId(params: P): Uint8Array
 
   /**
-   * Append the `seal_approve*` move call (target + the identity as the first arg + policy
-   * objects) to `tx`. Called at decrypt time to produce the PTB the key servers dry-run.
+   * Append the `seal_approve*` move call to `tx`: the identity first, the shared `PolicyConfig`
+   * second (version gate), then the policy's objects. Called at decrypt time to produce the PTB the
+   * key servers dry-run.
    */
-  buildApprove(tx: Transaction, packageId: string, idBytes: Uint8Array, params: P): void
+  buildApprove(tx: Transaction, target: SealPolicyTarget, idBytes: Uint8Array, params: P): void
 
   /** Form/rendering metadata (drives a generic, registry-driven UI). */
   describe(): PolicyDescriptor

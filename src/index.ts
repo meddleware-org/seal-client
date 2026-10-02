@@ -3,7 +3,16 @@
 // The on-chain half is the `seal_policies` Move package (repos/seal-policies-sui). Each policy is
 // a provider here mirrored 1:1 with a Move module; the registry is the extension seam.
 
-export type { FieldSpec, PolicyDescriptor, SealPolicyProvider, SealedManifest, FieldSuggestion, SealSuggestClient, SuggestContext } from './types.js'
+export type {
+  FieldSpec,
+  PolicyDescriptor,
+  SealPolicyProvider,
+  SealPolicyTarget,
+  SealedManifest,
+  FieldSuggestion,
+  SealSuggestClient,
+  SuggestContext,
+} from './types.js'
 export * from './bytes.js'
 export { parseSealedManifest, SealedManifestError } from './manifest.js'
 export { PolicyRegistry } from './registry.js'

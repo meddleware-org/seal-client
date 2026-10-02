@@ -14,13 +14,15 @@ import {
 } from '../src/sealed-content.js'
 
 const PKG = '0x' + '42'.repeat(32)
+const POLICY = '0x' + 'ee'.repeat(32)
+const TARGET = { publishedAt: PKG, policyConfigId: POLICY }
 const GATE = '0x' + 'ab'.repeat(32)
 const base = { gateId: GATE, blobId: 'b'.repeat(43), sealId: '0x' + 'cd'.repeat(48), label: 'Episode 1' }
 
 describe('buildPublishSealedContentTx limits (mirror the Move constants)', () => {
   it('accepts every field at its limit', () => {
     const tx = new Transaction()
-    buildPublishSealedContentTx(tx, PKG, {
+    buildPublishSealedContentTx(tx, TARGET, {
       ...base,
       label: 'l'.repeat(SEALED_CONTENT_LIMITS.label),
       blobId: 'b'.repeat(SEALED_CONTENT_LIMITS.blobId),
@@ -31,22 +33,26 @@ describe('buildPublishSealedContentTx limits (mirror the Move constants)', () =>
 
   it('counts UTF-8 bytes, not characters', () => {
     // 129 × "é" (2 bytes each) = 258 bytes > 256.
-    expect(() => buildPublishSealedContentTx(new Transaction(), PKG, { ...base, label: 'é'.repeat(129) })).toThrow(
+    expect(() => buildPublishSealedContentTx(new Transaction(), TARGET, { ...base, label: 'é'.repeat(129) })).toThrow(
       /label is 258 bytes/,
     )
   })
 
   it('rejects an over-long blob id and seal id before building', () => {
-    expect(() => buildPublishSealedContentTx(new Transaction(), PKG, { ...base, blobId: 'b'.repeat(129) })).toThrow(/blobId/)
-    expect(() => buildPublishSealedContentTx(new Transaction(), PKG, { ...base, sealId: 's'.repeat(257) })).toThrow(/sealId/)
+    expect(() => buildPublishSealedContentTx(new Transaction(), TARGET, { ...base, blobId: 'b'.repeat(129) })).toThrow(/blobId/)
+    expect(() => buildPublishSealedContentTx(new Transaction(), TARGET, { ...base, sealId: 's'.repeat(257) })).toThrow(/sealId/)
   })
 })
 
 describe('buildPublishSealedContentTransaction', () => {
   it('returns a complete transaction calling publish at the given package', () => {
-    const json = JSON.stringify(buildPublishSealedContentTransaction(PKG, base).getData())
+    const json = JSON.stringify(buildPublishSealedContentTransaction(TARGET, base).getData())
     expect(json).toContain('"module":"sealed_content"')
     expect(json).toContain('"function":"publish"')
+    // PolicyConfig (version gate) is the first argument.
+    const data = buildPublishSealedContentTransaction(TARGET, base).getData()
+    const first = data.commands[0].MoveCall!.arguments[0] as { Input: number }
+    expect(data.inputs[first.Input].UnresolvedObject?.objectId).toBe(POLICY)
   })
 })
 

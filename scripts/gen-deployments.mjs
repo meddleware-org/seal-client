@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Generate src/deployments.ts from @meddleware/seal-policies-sui's Published.toml: per network,
-// published-at (call target: seal_approve*, publish) and original-id (Seal identity namespace,
-// event types).
+// Generate src/deployments.ts from @meddleware/seal-policies-sui's Published.toml and
+// deployments.json: per network, published-at (call target: seal_approve*, publish), original-id
+// (Seal identity namespace, event types) and the shared PolicyConfig (version gate).
 // `--check` fails (exit 1) when the committed file differs from what the records produce.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -44,6 +44,7 @@ function id(value, what) {
 }
 
 const published = parsePublished(readFileSync(join(pkgDir, 'Published.toml'), 'utf8'))
+const objects = JSON.parse(readFileSync(join(pkgDir, 'deployments.json'), 'utf8'))
 const networks = Object.keys(published).sort()
 if (networks.length === 0) throw new Error('Published.toml has no [published.<network>] table')
 
@@ -51,10 +52,12 @@ const entries = networks.map((net) => {
   const p = published[net]
   const originalId = id(p['original-id'], `${net} original-id`)
   const publishedAt = id(p['published-at'], `${net} published-at`)
+  const policyConfigId = id(objects[net]?.policyConfigId, `${net} policyConfigId (deployments.json)`)
   return [
     `  ${/^[A-Za-z_$][\w$]*$/.test(net) ? net : `'${net}'`}: {`,
     `    originalId: '${originalId}',`,
     `    publishedAt: '${publishedAt}',`,
+    `    policyConfigId: '${policyConfigId}',`,
     `  },`,
   ].join('\n')
 })
@@ -71,6 +74,8 @@ export interface SealPoliciesDeployment {
   originalId: string
   /** Latest package version: the call target for \`seal_approve*\` and \`sealed_content::publish\`. */
   publishedAt: string
+  /** The shared \`PolicyConfig\` (version gate) every \`seal_approve*\` and \`publish\` reads. */
+  policyConfigId: string
 }
 
 /** Every recorded \`seal_policies\` deployment, by network. */

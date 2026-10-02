@@ -28,6 +28,8 @@ export interface SealControllerConfig {
   originalId: string
   /** The package's latest **published-at** id: the call target of the `seal_approve*` PTB. */
   publishedAt: string
+  /** The package's shared `PolicyConfig` (version gate), passed to every `seal_approve*`. */
+  policyConfigId: string
   /** Committee of key servers: encryption targets all; decryption needs `threshold` of them. */
   serverConfigs: KeyServerConfig[]
   /** `t` in t-of-n. With a 3-server committee, 2 tolerates any one server being offline. */
@@ -137,7 +139,7 @@ export class SealController {
     const sessionKey = await this.session(opts.address, opts.signPersonalMessage)
 
     const tx = new Transaction()
-    provider.buildApprove(tx, this.cfg.publishedAt, idBytes, params)
+    provider.buildApprove(tx, { publishedAt: this.cfg.publishedAt, policyConfigId: this.cfg.policyConfigId }, idBytes, params)
     const txBytes = await tx.build({ client: this.cfg.suiClient, onlyTransactionKind: true })
 
     return this.client.decrypt({

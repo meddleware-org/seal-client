@@ -2,6 +2,7 @@ import { bcs } from '@mysten/sui/bcs'
 import { Transaction } from '@mysten/sui/transactions'
 import { fromBase64, normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils'
 import type { CoreEventEntry, EventCursor, IndexerSource } from '@meddleware/access-gate-client'
+import type { SealPolicyTarget } from './types.js'
 
 /** Fields needed to publish an on-chain pointer binding sealed content to a gate. */
 export interface SealedContentInput {
@@ -23,13 +24,13 @@ export const SEALED_CONTENT_LIMITS = Object.freeze({ label: 256, blobId: 128, se
 
 /**
  * A transaction that publishes one sealed-content pointer (see {@link buildPublishSealedContentTx}).
- * `packageId` is the call target: the package's latest published-at.
+ * `target` is the package's latest published-at and its shared `PolicyConfig`.
  *
  * @throws {Error} if a string exceeds its {@link SEALED_CONTENT_LIMITS} byte limit.
  */
-export function buildPublishSealedContentTransaction(packageId: string, input: SealedContentInput): Transaction {
+export function buildPublishSealedContentTransaction(target: SealPolicyTarget, input: SealedContentInput): Transaction {
   const tx = new Transaction()
-  buildPublishSealedContentTx(tx, packageId, input)
+  buildPublishSealedContentTx(tx, target, input)
   return tx
 }
 
@@ -43,7 +44,7 @@ export function buildPublishSealedContentTransaction(packageId: string, input: S
  */
 export function buildPublishSealedContentTx(
   tx: Transaction,
-  packageId: string,
+  target: SealPolicyTarget,
   input: SealedContentInput,
 ): void {
   const enc = new TextEncoder()
@@ -54,8 +55,9 @@ export function buildPublishSealedContentTx(
     }
   }
   tx.moveCall({
-    target: `${packageId}::sealed_content::publish`,
+    target: `${target.publishedAt}::sealed_content::publish`,
     arguments: [
+      tx.object(target.policyConfigId),
       tx.pure.id(input.gateId),
       tx.pure.string(input.blobId),
       tx.pure.string(input.sealId),

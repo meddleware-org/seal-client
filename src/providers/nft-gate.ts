@@ -73,15 +73,16 @@ export function createNftGateProvider(accessGateOriginalId = ''): SealPolicyProv
       }
     },
 
-    buildApprove(tx, packageId, idBytes, params) {
+    buildApprove(tx, target, idBytes, params) {
       if (!params.nftId) {
         throw new Error('nft-gate decrypt requires `nftId` (the pass you hold for this gate).')
       }
       const fn = params.soulbound ? 'seal_approve_soulbound' : 'seal_approve'
       tx.moveCall({
-        target: `${packageId}::nft_gate::${fn}`,
+        target: `${target.publishedAt}::nft_gate::${fn}`,
         arguments: [
           tx.pure.vector('u8', Array.from(idBytes)),
+          tx.object(target.policyConfigId),
           tx.object(params.gateId),
           tx.object(params.nftId),
         ],
