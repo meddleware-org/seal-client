@@ -47,6 +47,19 @@ the Move module and the conformance vectors.
 5. **No secrets or protocol addresses are hardcoded** in shipped source (the only literal is the
    canonical Sui Clock `0x6`).
 
+### Trust assumptions users should know
+
+- **Key servers.** Any `t` of the configured servers together can decrypt; fewer than `t` online
+  means no one can. The servers learn who asks and for which identity.
+- **The policy package can change.** Access is decided by the `seal_policies` package. Until its
+  UpgradeCap is burned (see that package's `CUSTODY.md`), whoever holds the cap can publish an
+  upgrade that changes who may decrypt **existing** ciphertexts. Check the package's custody record
+  before sealing anything that must stay sealed.
+- **Released keys are permanent.** Once a key share has been released for an identity, the holder
+  can decrypt that ciphertext again — losing the pass later does not revoke it.
+- **Identities and labels are public.** An nft-gate identity reveals the gate id; a time-lock
+  identity reveals the unlock time.
+
 ## Supported versions
 
 Only the latest published npm version receives security fixes.

@@ -3,6 +3,13 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Documentation
+
+- `SECURITY.md` states the trust assumptions users need: key-server threshold, the policy
+  UpgradeCap's power over existing ciphertexts, permanent key release, public identities.
+
 ## [0.0.14] - 2026-10-02
 
 ### Changed
