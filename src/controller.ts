@@ -193,3 +193,50 @@ function normalizeHexId(v: string): string {
   const hex = v.toLowerCase().replace(/^0x/, '')
   return `0x${hex.padStart(64, '0')}`
 }
+
+/** What a ciphertext's header records: who can release its key, and under which policy package. */
+export interface CiphertextInfo {
+  /** Seal identity (hex, no `0x`). */
+  id: string
+  /** The policy package's original id (normalised). */
+  packageId: string
+  threshold: number
+  /** Key servers it was sealed to, with their weights (normalised object ids, in header order). */
+  servers: { objectId: string; weight: number }[]
+}
+
+/**
+ * Read a ciphertext's header without decrypting. The header names the key servers and threshold it
+ * was sealed under; decrypting needs a controller configured with those servers (re-sealing moves
+ * content to a new set).
+ *
+ * @throws {Error} if the bytes are not a Seal ciphertext.
+ */
+export function describeCiphertext(ciphertext: Uint8Array): CiphertextInfo {
+  const parsed = EncryptedObject.parse(ciphertext)
+  const servers: { objectId: string; weight: number }[] = []
+  for (const [objectId] of parsed.services) {
+    const id = normalizeHexId(objectId)
+    const existing = servers.find((s) => s.objectId === id)
+    if (existing) existing.weight += 1
+    else servers.push({ objectId: id, weight: 1 })
+  }
+  return {
+    id: parsed.id.toLowerCase().replace(/^0x/, ''),
+    packageId: normalizeHexId(parsed.packageId),
+    threshold: parsed.threshold,
+    servers,
+  }
+}
+
+/** True if `info` was sealed to exactly these servers (same weights) at this threshold. */
+export function sealedUnderServers(
+  info: CiphertextInfo,
+  servers: readonly Pick<KeyServerConfig, 'objectId' | 'weight'>[],
+  threshold: number,
+): boolean {
+  if (info.threshold !== threshold || info.servers.length !== servers.length) return false
+  return servers.every((s) =>
+    info.servers.some((h) => h.objectId === normalizeHexId(s.objectId) && h.weight === (s.weight ?? 1)),
+  )
+}

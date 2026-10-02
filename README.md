@@ -96,6 +96,28 @@ All three come from `@meddleware/seal-client/deployments`, which is generated fr
 `Published.toml` and `deployments.json` that `@meddleware/seal-policies-sui` publishes. Pass
 `{ publishedAt, policyConfigId }` (a `SealPolicyTarget`) wherever a call target is needed.
 
+## Re-sealing onto new key servers
+
+A ciphertext can only be decrypted by the key servers it was sealed to. To move content to a new
+server set (for example when a provider withdraws), decrypt it with a controller configured for the
+servers its header records, then encrypt the plaintext with the current controller:
+
+```ts
+import { describeCiphertext, sealedUnderServers } from '@meddleware/seal-client/controller'
+
+const info = describeCiphertext(ciphertext) // { id, packageId, threshold, servers }
+if (!sealedUnderServers(info, currentServers, currentThreshold)) {
+  const old = new SealController(
+    { ...deployment, suiClient, threshold: info.threshold,
+      serverConfigs: info.servers.map((s) => ({ ...s, aggregatorUrl: knownAggregators[s.objectId] })) },
+    registry,
+  )
+  const plaintext = await old.decrypt(policyType, params, info.id, ciphertext, signer)
+  const { id, ciphertext: next } = await seal.encrypt(policyType, encryptParams, plaintext)
+  // store `next` and write a new manifest; the old ciphertext still needs its old servers
+}
+```
+
 ## Sealed-content discovery
 
 ```ts

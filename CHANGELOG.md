@@ -3,6 +3,16 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.12] - 2026-10-02
+
+### Added
+
+- **`describeCiphertext(ciphertext)`** (`./controller`) — the identity, policy package, threshold
+  and key servers (with weights) a ciphertext's header records, without decrypting.
+- **`sealedUnderServers(info, servers, threshold)`** — whether a ciphertext was sealed to exactly
+  this server set. Together they let an app re-seal content onto new key servers: decrypt with a
+  controller for the recorded servers, then encrypt with the current one.
+
 ## [0.0.11] - 2026-10-02
 
 Follows the version-gated `seal_policies` republish (testnet `0x61c4aa…`,

@@ -36,9 +36,10 @@ one Move module 1:1.
   - `checkShareConsistency` defaults to `true` on decrypt.
   - Before requesting keys, `decrypt` parses the ciphertext header (`EncryptedObject.parse`) and
     refuses a ciphertext whose identity or policy package differs from the expected ones.
-  - A committee counts as **one** server: the mainnet verified committee behind the Mysten mainnet
-    aggregator is used at threshold 1 (its 5-of-8 is internal) and needs an Enoki API key
-    (`KeyServerConfig.apiKeyName` / `apiKey`, default header `X-API-Key`).
+  - A committee behind an aggregator counts as **one** server. `KeyServerConfig.apiKeyName` /
+    `apiKey` exist for Permissioned servers and authenticated aggregators, but an API key in a
+    browser bundle is public: MeddleWare's apps use keyless servers only (workspace ADR-0002 — mainnet
+    is three Open-mode servers at threshold 2).
   - SessionKeys are cached in memory only, keyed by address **and** package.
 - **`@mysten/seal` + `@mysten/sui` are peer deps.** The consuming app supplies a single instance;
   this package must not bundle its own. `@meddleware/access-gate-client` is the one runtime
@@ -63,7 +64,7 @@ one Move module 1:1.
 | `src/types.ts` | Core contracts: `SealPolicyProvider`, `PolicyDescriptor`/`FieldSpec` (drive the generic UI), `SealedManifest`, `SuggestContext`. |
 | `src/registry.ts` | `PolicyRegistry` — register/get/has/list; `list()` drives the UI picker. |
 | `src/default-registry.ts` | `createDefaultRegistry(accessGateOriginalId?)` preloaded with nft-gate + time-lock. |
-| `src/controller.ts` | `SealController` — threshold encrypt/decrypt + SessionKey cache. |
+| `src/controller.ts` | `SealController` — threshold encrypt/decrypt + SessionKey cache; `describeCiphertext` / `sealedUnderServers` read a ciphertext's header (servers, threshold, package) for re-sealing. |
 | `src/providers/nft-gate.ts` | Access-gate NFT ownership policy; `suggest()` lists the wallet's gates (access-gate-client `fetchOwnedGates`). |
 | `src/providers/timelock.ts` | Clock-based time-lock policy (`0x6`). |
 | `src/sealed-content.ts` | Discovery pointers: publish builders, `listSealedContent` (full node / indexer), BCS event parser. |
