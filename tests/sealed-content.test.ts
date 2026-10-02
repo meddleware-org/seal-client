@@ -51,8 +51,8 @@ describe('buildPublishSealedContentTransaction', () => {
     expect(json).toContain('"function":"publish"')
     // PolicyConfig (version gate) is the first argument.
     const data = buildPublishSealedContentTransaction(TARGET, base).getData()
-    const first = data.commands[0].MoveCall!.arguments[0] as { Input: number }
-    expect(data.inputs[first.Input].UnresolvedObject?.objectId).toBe(POLICY)
+    const first = data.commands[0]!.MoveCall!.arguments[0] as { Input: number }
+    expect(data.inputs[first.Input]!.UnresolvedObject?.objectId).toBe(POLICY)
   })
 })
 

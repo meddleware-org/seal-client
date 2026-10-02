@@ -33,9 +33,9 @@ describe('nftGateProvider', () => {
     const tx = new Transaction()
     nftGateProvider.buildApprove(tx, TARGET, nftGateProvider.buildId({ gateId: GATE }), { gateId: GATE, nftId: NFT })
     const data = tx.getData()
-    const call = data.commands[0].MoveCall!
+    const call = data.commands[0]!.MoveCall!
     expect(call.package).toBe(PKG)
-    const objectIds = call.arguments.slice(1).map((a) => (a as { Input: number }).Input).map((i) => data.inputs[i].UnresolvedObject?.objectId)
+    const objectIds = call.arguments.slice(1).map((a) => (a as { Input: number }).Input).map((i) => data.inputs[i]!.UnresolvedObject?.objectId)
     expect(objectIds).toEqual([POLICY, GATE, NFT])
   })
 
@@ -68,8 +68,8 @@ describe('timeLockProvider', () => {
     timeLockProvider.buildApprove(tx, TARGET, id, {})
     const data = tx.getData()
     expect(JSON.stringify(data)).toContain('timelock')
-    const call = data.commands[0].MoveCall!
-    const objectIds = call.arguments.slice(1).map((a) => (a as { Input: number }).Input).map((i) => data.inputs[i].UnresolvedObject?.objectId)
+    const call = data.commands[0]!.MoveCall!
+    const objectIds = call.arguments.slice(1).map((a) => (a as { Input: number }).Input).map((i) => data.inputs[i]!.UnresolvedObject?.objectId)
     expect(objectIds).toEqual([POLICY, '0x0000000000000000000000000000000000000000000000000000000000000006'])
   })
 
@@ -113,6 +113,16 @@ describe('nonce widths (F2)', () => {
     const b = timeLockProvider.buildId({ unlockMs: 1000 })
     expect(bytesToHex(a.slice(0, 8))).toBe(bytesToHex(b.slice(0, 8)))
     expect(bytesToHex(a.slice(8))).not.toBe(bytesToHex(b.slice(8)))
+  })
+})
+
+describe('nft-gate verifyId layout', () => {
+  it('rejects an id that is not exactly [32-byte gate][16-byte nonce]', () => {
+    const p = createNftGateProvider()
+    const ok = p.buildId({ gateId: GATE })
+    expect(() => p.verifyId(ok, { gateId: GATE })).not.toThrow()
+    expect(() => p.verifyId(ok.slice(0, 40), { gateId: GATE })).toThrow(/48 bytes/)
+    expect(() => p.verifyId(new Uint8Array([...ok, 0]), { gateId: GATE })).toThrow(/48 bytes/)
   })
 })
 

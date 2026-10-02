@@ -98,12 +98,13 @@ export interface SealPolicyProvider<P = Record<string, unknown>> {
   describe(): PolicyDescriptor
 
   /**
-   * Optional defense-in-depth: verify that `idBytes` (from the stored manifest) is consistent
-   * with `params` (supplied at decrypt time). Throw an `Error` on mismatch — indicates a
-   * corrupted manifest or a caller supplying params for a different ciphertext.
-   * Called by `SealController.decrypt` before building the approve PTB.
+   * Verify that `idBytes` (from the stored manifest or the ciphertext) has this policy's layout and
+   * is consistent with `params` (supplied at decrypt time). Throw an `Error` on mismatch — a
+   * corrupted manifest, or params for a different ciphertext. Required: `SealController.decrypt`
+   * calls it before building the approve PTB, so every policy checks the identity it will be
+   * approved against.
    */
-  verifyId?(idBytes: Uint8Array, params: P): void
+  verifyId(idBytes: Uint8Array, params: P): void
 
   /**
    * Optional: suggest values for form fields by querying chain state (e.g. objects owned by the

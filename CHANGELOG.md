@@ -3,6 +3,17 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.14] - 2026-10-02
+
+### Changed
+
+- **Breaking:** `SealPolicyProvider.verifyId` is required, and `decrypt` always calls it before the
+  approve PTB, so every policy checks the identity it will be approved against. The nft-gate provider
+  now also requires the exact `[32-byte gate][16-byte nonce]` length.
+- `decrypt` refuses an approve PTB that holds anything but `seal_approve*` calls to the policy
+  package (`assertApproveOnly`, exported); an empty PTB is refused too.
+- `noUncheckedIndexedAccess` is on.
+
 ## [0.0.13] - 2026-10-02
 
 ### Changed

@@ -19,6 +19,7 @@ export { PolicyRegistry } from './registry.js'
 export { createDefaultRegistry } from './default-registry.js'
 export {
   SealController,
+  assertApproveOnly,
   type SealControllerConfig,
   type KeyServerConfig,
   type SignPersonalMessage,

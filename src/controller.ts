@@ -125,7 +125,7 @@ export class SealController {
     if (id.length % 2 !== 0) throw new Error(`malformed Seal id (odd hex length): ${id}`)
     const idBytes = hexToBytes(id)
     // Defense-in-depth: verify stored id is consistent with the supplied params.
-    provider.verifyId?.(idBytes, params)
+    provider.verifyId(idBytes, params)
     // The ciphertext itself names the identity and namespace it was sealed to; refuse to request
     // keys for a different identity than the one the caller expects (a swapped ciphertext or a
     // tampered manifest would otherwise ask the servers for the wrong key).
@@ -140,6 +140,7 @@ export class SealController {
 
     const tx = new Transaction()
     provider.buildApprove(tx, { publishedAt: this.cfg.publishedAt, policyConfigId: this.cfg.policyConfigId }, idBytes, params)
+    assertApproveOnly(tx, this.cfg.publishedAt)
     const txBytes = await tx.build({ client: this.cfg.suiClient, onlyTransactionKind: true })
 
     return this.client.decrypt({
@@ -189,6 +190,24 @@ export class SealController {
 }
 
 /** Lower-case, `0x`-prefixed, zero-padded 32-byte hex id for comparisons. */
+/**
+ * An approve PTB holds only `seal_approve*` calls to the policy package (the key servers reject
+ * anything else; checking here fails fast and keeps a misbehaving provider from building more).
+ *
+ * @throws {Error} if the PTB is empty or holds any other command or target.
+ */
+export function assertApproveOnly(tx: Transaction, publishedAt: string): void {
+  const pkg = normalizeHexId(publishedAt)
+  const commands = tx.getData().commands
+  if (commands.length === 0) throw new Error('seal-client: the approve PTB is empty')
+  for (const c of commands) {
+    const call = c.$kind === 'MoveCall' ? c.MoveCall : null
+    if (!call || normalizeHexId(call.package) !== pkg || !call.function.startsWith('seal_approve')) {
+      throw new Error('seal-client: the approve PTB may hold only seal_approve* calls to the policy package')
+    }
+  }
+}
+
 function normalizeHexId(v: string): string {
   const hex = v.toLowerCase().replace(/^0x/, '')
   return `0x${hex.padStart(64, '0')}`

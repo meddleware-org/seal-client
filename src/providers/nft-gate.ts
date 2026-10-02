@@ -62,6 +62,10 @@ export function createNftGateProvider(accessGateOriginalId = ''): SealPolicyProv
     },
 
     verifyId(idBytes, params) {
+      // Layout `[32-byte gate id][16-byte nonce]` — anything else cannot have come from buildId.
+      if (idBytes.length !== 32 + NONCE_LEN) {
+        throw new Error(`seal-client: nft-gate id must be ${32 + NONCE_LEN} bytes ([gate id][nonce]); got ${idBytes.length}`)
+      }
       const expected = objectIdBytes(params.gateId)
       for (let i = 0; i < 32; i++) {
         if (idBytes[i] !== expected[i]) {

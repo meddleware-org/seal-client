@@ -32,11 +32,15 @@ import type { SealPolicyProvider } from '../src/types.js'
 import { createNftGateProvider } from '../src/providers/nft-gate.js'
 import { bytesToHex, objectIdBytes, concatBytes, randomBytes } from '../src/bytes.js'
 
-// A no-op provider so decrypt builds an empty PTB (no object resolution → no suiClient IO).
+// A minimal provider: one seal_approve call with a typed pure argument (no object resolution → no
+// suiClient IO).
 const noopProvider: SealPolicyProvider = {
   type: 'noop',
   buildId: () => new Uint8Array([0]),
-  buildApprove: () => {},
+  verifyId: () => {},
+  buildApprove: (tx, target, idBytes) => {
+    tx.moveCall({ target: `${target.publishedAt}::noop::seal_approve`, arguments: [tx.pure.vector('u8', Array.from(idBytes))] })
+  },
   describe: () => ({ type: 'noop', label: '', help: '', encryptFields: [], decryptFields: [] }),
 }
 
@@ -140,7 +144,13 @@ describe('SealController ciphertext and committee checks', () => {
 describe('SealController after a package upgrade', () => {
   it('seals and scopes sessions at the original id, and calls seal_approve at published-at', async () => {
     const approveTargets: Array<{ publishedAt: string; policyConfigId: string }> = []
-    const recording: SealPolicyProvider = { ...noopProvider, buildApprove: (_tx, target) => void approveTargets.push(target) }
+    const recording: SealPolicyProvider = {
+      ...noopProvider,
+      buildApprove: (tx, target, idBytes, params) => {
+        approveTargets.push(target)
+        noopProvider.buildApprove(tx, target, idBytes, params)
+      },
+    }
     const c = new SealController(
       { suiClient: {} as never, originalId: '0x1', publishedAt: '0x9', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 1 },
       new PolicyRegistry().register(recording),
@@ -157,5 +167,47 @@ describe('SealController after a package upgrade', () => {
       new PolicyRegistry().register(noopProvider),
     )
     await expect(c.decrypt('noop', {}, '00', new Uint8Array(), opts)).rejects.toThrow('different policy package')
+  })
+})
+
+describe('approve PTB and identity checks (SEAL lens)', () => {
+  const ID = '00'
+  const sealed = new Uint8Array([1])
+
+  function controllerWith(provider: SealPolicyProvider) {
+    const registry = new PolicyRegistry().register(provider)
+    const cfg = { suiClient: {} as never, originalId: '0x1', publishedAt: '0x1', policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs' }], threshold: 1 }
+    return new SealController(cfg, registry)
+  }
+
+  it('refuses an approve PTB with anything but seal_approve* calls to the policy package', async () => {
+    const extra: SealPolicyProvider = {
+      ...noopProvider,
+      type: 'extra',
+      buildApprove: (tx, target) => {
+        tx.moveCall({ target: `${target.publishedAt}::noop::seal_approve`, arguments: [] })
+        tx.moveCall({ target: `${target.publishedAt}::noop::steal`, arguments: [] })
+      },
+    }
+    await expect(controllerWith(extra).decrypt('extra', {}, ID, sealed, opts)).rejects.toThrow(/only seal_approve/)
+    const otherPkg: SealPolicyProvider = {
+      ...noopProvider,
+      type: 'other',
+      buildApprove: (tx) => {
+        tx.moveCall({ target: `0x${'2'.repeat(64)}::noop::seal_approve`, arguments: [] })
+      },
+    }
+    await expect(controllerWith(otherPkg).decrypt('other', {}, ID, sealed, opts)).rejects.toThrow(/only seal_approve/)
+    const empty: SealPolicyProvider = { ...noopProvider, type: 'empty', buildApprove: () => {} }
+    await expect(controllerWith(empty).decrypt('empty', {}, ID, sealed, opts)).rejects.toThrow(/empty/)
+  })
+
+  it('always runs the provider\'s verifyId before approving', async () => {
+    const verifyId = vi.fn(() => {
+      throw new Error('layout mismatch')
+    })
+    const strict: SealPolicyProvider = { ...noopProvider, type: 'strict', verifyId }
+    await expect(controllerWith(strict).decrypt('strict', {}, ID, sealed, opts)).rejects.toThrow(/layout mismatch/)
+    expect(verifyId).toHaveBeenCalledOnce()
   })
 })

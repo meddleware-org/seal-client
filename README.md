@@ -141,7 +141,8 @@ page.pointers // newest first; page.cursor continues
 ## Adding a policy type
 
 1. Add a Move module `seal_policies::<policy>` exposing `entry fun seal_approve(id, …)`.
-2. Implement a `SealPolicyProvider` here whose `buildId`/`buildApprove` match that module.
+2. Implement a `SealPolicyProvider` here whose `buildId`/`buildApprove` match that module, and whose
+   `verifyId` checks the identity layout (required — `decrypt` calls it before every approve).
 3. `registry.register(myProvider)`. No changes to existing providers or the controller.
 4. If it ships in the default registry, add it to `PROVIDERS` in `tests/abi-table.ts` (the offline
    test fails until you do); the testnet ABI-drift check then covers its `seal_approve*`.
