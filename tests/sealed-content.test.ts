@@ -152,4 +152,15 @@ describe('listSealedContent', () => {
     expect(fallback).toMatchObject({ source: 'rpc', indexerError: 'indexer responded 502' })
     expect(fallback.pointers.map((p) => p.label)).toEqual(['rpc'])
   })
+
+  it('never reads a plain-http indexer (shared reader); the first page comes from the full node', async () => {
+    const fetchFn = vi.fn()
+    const page = await listSealedContent(eventsClient([[event(GATE, 'rpc')]]), {
+      originalId: PKG,
+      gateId: GATE,
+      indexer: { url: 'http://i.example', network: 'testnet', fetch: fetchFn as unknown as typeof fetch },
+    })
+    expect(fetchFn).not.toHaveBeenCalled()
+    expect(page).toMatchObject({ source: 'rpc', indexerError: expect.stringMatching(/https/) })
+  })
 })

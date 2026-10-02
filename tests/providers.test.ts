@@ -127,7 +127,26 @@ describe('nft-gate suggest', () => {
           : { objects: [{ objectId: CAP, type: capType, json: { gate_id: GATE } }], hasNextPage: true, cursor: 'p2' },
       ),
       getObject: vi.fn(async () => ({
-        object: { objectId: GATE, type: `${ORIGINAL}::access_gate::Gate`, json: { nft_name: 'Members', price_mist: '0' } },
+        object: {
+          objectId: GATE,
+          type: `${ORIGINAL}::access_gate::Gate`,
+          // A complete Gate: access-gate-client's parser rejects one with a missing field.
+          json: {
+            price_mist: '0',
+            payment_recipient: CAP,
+            default_uses: '0',
+            soulbound: false,
+            auto_burn_at_zero: false,
+            paused: false,
+            frozen: false,
+            nft_name: 'Members',
+            nft_image_url: '',
+            nft_description: '',
+            policy: { freeze_requires_unpaused: false, lock_commission_on_freeze: false, pause_blocks_decryption: false, pause_blocks_access: false },
+            locked_commission: null,
+            free_fee_paid: true,
+          },
+        },
       })),
     },
   })

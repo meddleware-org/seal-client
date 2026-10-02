@@ -3,6 +3,16 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.13] - 2026-10-02
+
+### Changed
+
+- `@meddleware/access-gate-client` 0.0.3: gate suggestions use its fail-closed parsers (a gate with
+  a missing field is skipped), and `listSealedContent` reads the indexer through the shared
+  `readIndexerEvents` — https only (loopback http allowed), a 1 MiB body cap before parsing and a
+  checked page shape. A plain-http indexer is never contacted; the first page comes from the full
+  node with the reason in `indexerError`.
+
 ## [0.0.12] - 2026-10-02
 
 ### Added

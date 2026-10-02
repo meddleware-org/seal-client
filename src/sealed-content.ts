@@ -1,6 +1,7 @@
 import { bcs } from '@mysten/sui/bcs'
 import { Transaction } from '@mysten/sui/transactions'
 import { fromBase64, normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils'
+import { readIndexerEvents } from '@meddleware/access-gate-client'
 import type { CoreEventEntry, EventCursor, IndexerSource } from '@meddleware/access-gate-client'
 import type { SealPolicyTarget } from './types.js'
 
@@ -225,18 +226,12 @@ async function listFromIndexer(
   before: string | undefined,
 ): Promise<SealedContentPage> {
   const gate = normalizeSuiAddress(options.gateId)
-  const url = new URL(
-    `v1/${encodeURIComponent(indexer.network)}/sealed-content`,
-    indexer.url.endsWith('/') ? indexer.url : `${indexer.url}/`,
-  )
-  url.searchParams.set('gate', gate)
-  if (before) url.searchParams.set('before', before)
-  url.searchParams.set('limit', String(limit))
-
-  const res = await (indexer.fetch ?? fetch)(url, { signal: AbortSignal.timeout(indexer.timeoutMs ?? 3000) })
-  if (!res.ok) throw new Error(`indexer responded ${res.status}`)
-  const body = (await res.json()) as { events?: CoreEventEntry[]; cursor?: string | null; indexedFromCheckpoint?: string }
-  if (!Array.isArray(body?.events)) throw new Error('indexer response has no events list')
+  // The shared reader: https only, the timeout, a body cap before parsing, a checked page shape.
+  const body = await readIndexerEvents(indexer, `v1/${encodeURIComponent(indexer.network)}/sealed-content`, {
+    gate,
+    before,
+    limit: String(limit),
+  })
 
   // The indexer is display-only: rows still have to be this package's event for this gate.
   const pointers = body.events
