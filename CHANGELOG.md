@@ -3,7 +3,11 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.0.15] - 2026-10-03
+
+### Changed
+
+- `@meddleware/access-gate-client` ^0.0.4 (full recipient addresses).
 
 ### Documentation
 
