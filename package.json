@@ -51,7 +51,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@meddleware/access-gate-client": "^0.0.6"
+    "@meddleware/access-gate-client": "^0.0.7"
   },
   "peerDependencies": {
     "@mysten/seal": "^1.4.18",

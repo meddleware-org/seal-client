@@ -27,6 +27,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - CI: the tag workflow runs the CI workflow (lint was missing), a package-contents check and the build; no
   step uses `--if-present`. A weekly workflow runs the live testnet suite (ABI drift, event decoding,
   time-lock round trip). Peer floor `@mysten/seal` ^1.4.18.
+- Requires `@meddleware/access-gate-client` ^0.0.7.
 - Doc fixes: `decrypt` lists the checks it makes before requesting keys; a misplaced doc comment; CLAUDE.md
   dependency version.
 
