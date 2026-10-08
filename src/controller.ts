@@ -59,6 +59,12 @@ export interface SealControllerConfig {
    * (content sealed to it could never be decrypted).
    */
   accessGateOriginalId?: string
+  /**
+   * Allow sealing to a gate that mints transferable passes (default `false`). A holder of a transferable pass
+   * can freeze or share it, after which anyone can present it and `nft_gate::seal_approve` approves: the
+   * content is then effectively public. Only checked when `accessGateOriginalId` is set (the gate is read).
+   */
+  allowTransferableGates?: boolean
 }
 
 /** Wallet hook: sign a personal message, returning the signature (base64). */
@@ -124,7 +130,9 @@ export class SealController {
     const id = bytesToHex(provider.buildId(params))
     const gateId = (params as { gateId?: unknown } | null)?.gateId
     if (type === 'nft-gate' && this.cfg.accessGateOriginalId && typeof gateId === 'string') {
-      await assertLinkedGate(this.cfg.suiClient as unknown as SealSuggestClient, gateId, this.cfg.accessGateOriginalId)
+      await assertLinkedGate(this.cfg.suiClient as unknown as SealSuggestClient, gateId, this.cfg.accessGateOriginalId, {
+        requireSoulbound: !this.cfg.allowTransferableGates,
+      })
     }
     const { encryptedObject } = await this.client.encrypt({
       threshold: this.cfg.threshold,

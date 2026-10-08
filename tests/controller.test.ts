@@ -233,7 +233,9 @@ describe('encrypt binds to the original id (not published-at) and the configured
   it('reads the gate first and refuses one that is not a Gate of the linked access_gate package', async () => {
     const LINKED = '0x' + 'a5'.repeat(32)
     const GATE = '0x' + '0a'.repeat(32)
-    const client = (type?: string) => ({ core: { getObject: vi.fn(async () => ({ object: { objectId: GATE, type } })) } })
+    const client = (type?: string, json: Record<string, unknown> = { soulbound: true }) => ({
+      core: { getObject: vi.fn(async () => ({ object: { objectId: GATE, type, json } })) },
+    })
     encryptSpy.mockClear()
     await mk({ accessGateOriginalId: LINKED }, client(`${LINKED}::access_gate::Gate`)).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))
     expect(encryptSpy).toHaveBeenCalledTimes(1)
@@ -242,6 +244,34 @@ describe('encrypt binds to the original id (not published-at) and the configured
       await expect(mk({ accessGateOriginalId: LINKED }, client(type)).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))).rejects.toThrow(/not a Gate of the linked/)
       expect(encryptSpy).not.toHaveBeenCalled()
     }
+  })
+})
+
+describe('encrypt and transferable gates', () => {
+  const LINKED = '0x' + 'a5'.repeat(32)
+  const GATE = '0x' + '0a'.repeat(32)
+  const mk = (extra: Record<string, unknown>, json: Record<string, unknown> | null) =>
+    new SealController(
+      {
+        suiClient: { core: { getObject: vi.fn(async () => ({ object: { objectId: GATE, type: `${LINKED}::access_gate::Gate`, json } })) } } as never,
+        originalId: '0x' + '11'.repeat(32), publishedAt: '0x' + '22'.repeat(32), policyConfigId: '0x7',
+        serverConfigs: [{ objectId: '0xs1' }, { objectId: '0xs2' }], threshold: 2, accessGateOriginalId: LINKED, ...extra,
+      },
+      new PolicyRegistry().register(createNftGateProvider()),
+    )
+
+  it('refuses a gate that mints transferable passes (a holder can freeze one into public access)', async () => {
+    encryptSpy.mockClear()
+    await expect(mk({}, { soulbound: false }).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))).rejects.toThrow(/transferable passes/)
+    await expect(mk({}, null).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))).rejects.toThrow(/transferable passes/)
+    expect(encryptSpy).not.toHaveBeenCalled()
+  })
+
+  it('seals to a soulbound gate, and to a transferable one only when asked to', async () => {
+    encryptSpy.mockClear()
+    await mk({}, { soulbound: true }).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))
+    await mk({ allowTransferableGates: true }, { soulbound: false }).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))
+    expect(encryptSpy).toHaveBeenCalledTimes(2)
   })
 })
 

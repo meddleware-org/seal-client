@@ -77,6 +77,8 @@ mainnet), because confidentiality beyond one operator needs at least two indepen
 (`apiKeyName` / `apiKey`, for a Permissioned server or an authenticated aggregator) is **public** once
 it ships in a browser bundle, so do not rely on one for secrecy.
 
+Sealing to a gate that mints transferable passes is refused by default (`allowTransferableGates` opts in): a holder can freeze such a pass into public access, so seal to soulbound gates.
+
 Safety defaults: the threshold must lie in `[1, total weight]`; `verifyKeyServers` is on unless a
 server uses an aggregator (one switch for the whole configuration, so a mixed setup of an aggregator plus
 independent servers runs without URL verification for the independent ones too —

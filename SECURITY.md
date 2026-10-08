@@ -60,6 +60,10 @@ the Move module and the conformance vectors.
   means no one can. The servers learn who asks and for which identity. Key-server URL verification is
   one switch for the whole configuration: a mixed setup (an aggregator plus independent servers) runs
   without it for the independent servers too (`SealController.verifiesKeyServers`).
+- **Seal to soulbound gates.** A holder of a *transferable* pass (`AccessNFT` has `store`) can freeze or share it,
+  after which anyone can present it and the policy approves. `encrypt` therefore refuses a gate that mints
+  transferable passes (it reads the gate; `accessGateOriginalId` must be configured) unless
+  `allowTransferableGates: true`.
 - **Only the current policy package decrypts.** A controller serves the one `originalId` it is configured
   with. Content sealed under a superseded `seal_policies` namespace is not supported by this package: the
   manifest records no namespace, and pre-v0.2 packages are republished rather than migrated.

@@ -3,6 +3,15 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.18] - 2026-10-08
+
+### Security
+
+- `encrypt` for `nft-gate` (with `accessGateOriginalId` set, which reads the gate) refuses a gate that mints
+  **transferable** passes unless `allowTransferableGates: true`. A holder of a transferable pass can freeze or
+  share it, after which anyone can present it and `nft_gate::seal_approve` approves: content sealed to such a
+  gate is effectively public. Seal to soulbound gates.
+
 ## [0.0.17] - 2026-10-08
 
 ### Fixed
