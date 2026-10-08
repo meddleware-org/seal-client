@@ -106,6 +106,24 @@ export function createNftGateProvider(accessGateOriginalId = ''): SealPolicyProv
       })
     },
 
+    parseParams(raw) {
+      if (!raw) throw new Error('nft-gate manifest params are missing (gateId is required).')
+      const out: NftGateParams = { gateId: '' }
+      const id = (key: string, value: unknown): string => {
+        if (typeof value !== 'string' || !/^0x[0-9a-fA-F]{1,64}$/.test(value)) {
+          throw new Error(`nft-gate manifest params.${key} must be 0x followed by up to 64 hex digits.`)
+        }
+        return value
+      }
+      out.gateId = id('gateId', raw.gateId)
+      if (raw.nftId !== undefined) out.nftId = id('nftId', raw.nftId)
+      if (raw.soulbound !== undefined) {
+        if (typeof raw.soulbound !== 'boolean') throw new Error('nft-gate manifest params.soulbound must be a boolean.')
+        out.soulbound = raw.soulbound
+      }
+      return out
+    },
+
     describe: descriptor,
 
     async suggest({ account, client }: SuggestContext): Promise<Partial<Record<string, FieldSuggestion[]>>> {

@@ -3,6 +3,33 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.17] - 2026-10-08
+
+### Fixed
+
+- `parseSealedManifest` requires the identity (`id`) to be even-length hex, and, given a registry, checks the
+  policy type and lets the provider validate and narrow `params` (`parseParams`; nft-gate requires 0x object
+  ids and a boolean `soulbound`, and keeps only known keys). A manifest that cannot decrypt now fails at import.
+- `listSealedContent` skips and counts a row that does not decode (`page.skipped`) instead of failing the page,
+  and caps the full-node scan at 20 pages (each page scans 50 events of every gate).
+- `PolicyRegistry.register` refuses a second provider for a registered type unless `{ replace: true }`.
+
+### Added
+
+- `SealController.verifiesKeyServers`: key-server URL verification is one SDK switch, off as soon as any
+  server uses an aggregator, so a mixed configuration does not verify the independent servers. Documented in
+  the README, `SECURITY.md` and the config docs.
+
+### Changed
+
+- `SECURITY.md` ships in the package and its list is renumbered; it states that only the current policy
+  package decrypts (superseded namespaces are unsupported).
+- CI: the tag workflow runs the CI workflow (lint was missing), a package-contents check and the build; no
+  step uses `--if-present`. A weekly workflow runs the live testnet suite (ABI drift, event decoding,
+  time-lock round trip). Peer floor `@mysten/seal` ^1.4.18.
+- Doc fixes: `decrypt` lists the checks it makes before requesting keys; a misplaced doc comment; CLAUDE.md
+  dependency version.
+
 ## [0.0.16] - 2026-10-08
 
 ### Changed (breaking, pre-v0.2)

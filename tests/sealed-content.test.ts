@@ -194,3 +194,32 @@ describe('listSealedContent', () => {
     expect(page).toMatchObject({ source: 'rpc', indexerError: expect.stringMatching(/https/) })
   })
 })
+
+describe('discovery robustness', () => {
+  it('skips and counts a row that does not decode instead of failing the page', async () => {
+    const broken: CoreEventEntry = { ...event(GATE, 'x'), bcs: new Uint8Array([1, 2, 3]) }
+    const page = await listSealedContent(eventsClient([[broken, event(GATE, 'ok')]]), { originalId: PKG, gateId: GATE })
+    expect(page.pointers.map((p) => p.label)).toEqual(['ok'])
+    expect(page.skipped).toBe(1)
+  })
+
+  it('does the same on an indexer page', async () => {
+    const good = event(GATE, 'ok')
+    const rows = [{ ...good, bcs: toBase64(good.bcs as Uint8Array) }, { ...good, bcs: toBase64(new Uint8Array([9])) }]
+    const idx = vi.fn(async () => Response.json({ events: rows, cursor: null }))
+    const page = await listSealedContent(eventsClient([[]]), {
+      originalId: PKG,
+      gateId: GATE,
+      indexer: { url: 'https://i.example', network: 'testnet', fetch: idx as unknown as typeof fetch },
+    })
+    expect(page.pointers).toHaveLength(1)
+    expect(page.skipped).toBe(1)
+  })
+
+  it('caps the full-node scan at 20 pages whatever maxPages says', async () => {
+    const pages = Array.from({ length: 40 }, () => [event(OTHER_GATE)])
+    const client = eventsClient(pages)
+    await listSealedContent(client, { originalId: PKG, gateId: GATE, maxPages: 1000 })
+    expect(client.core.listEvents).toHaveBeenCalledTimes(20)
+  })
+})

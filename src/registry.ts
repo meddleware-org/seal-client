@@ -8,8 +8,18 @@ import type { SealPolicyProvider } from './types.js'
 export class PolicyRegistry {
   private readonly providers = new Map<string, SealPolicyProvider<never>>()
 
-  /** Register (or replace) a provider. Returns `this` for chaining. */
-  register<P>(provider: SealPolicyProvider<P>): this {
+  /**
+   * Register a provider. Returns `this` for chaining.
+   *
+   * A second provider for a type that is already registered is refused: replacing the built-in `nft-gate`
+   * would silently change how identities are built. Pass `{ replace: true }` when that is the intent.
+   */
+  register<P>(provider: SealPolicyProvider<P>, options: { replace?: boolean } = {}): this {
+    if (this.providers.has(provider.type) && !options.replace) {
+      throw new Error(
+        `A Seal policy provider for "${provider.type}" is already registered; pass { replace: true } to replace it.`,
+      )
+    }
     this.providers.set(provider.type, provider as SealPolicyProvider<never>)
     return this
   }

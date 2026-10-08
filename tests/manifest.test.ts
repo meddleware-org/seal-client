@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseSealedManifest, SealedManifestError } from '../src/manifest.js'
+import { createDefaultRegistry } from '../src/default-registry.js'
 
 const valid = {
   policyType: 'nft-gate',
@@ -56,5 +57,36 @@ describe('parseSealedManifest', () => {
 
   it('rejects a non-string label', () => {
     expect(() => parseSealedManifest({ ...valid, label: 5 })).toThrow(SealedManifestError)
+  })
+})
+
+describe('parseSealedManifest: identity and params', () => {
+  const GATE = '0x' + 'ab'.repeat(32)
+  const nft = { policyType: 'nft-gate', id: 'ab'.repeat(48), blobId: 'blob', network: 'testnet', params: { gateId: GATE, soulbound: true } }
+  const registry = createDefaultRegistry()
+
+  it('requires the identity to be even-length hex', () => {
+    for (const id of ['xyz', 'abc', '0xabcd', 'ab cd']) {
+      expect(() => parseSealedManifest({ ...nft, id })).toThrow(SealedManifestError)
+    }
+    expect(parseSealedManifest({ ...nft, id: 'ABCD' }).id).toBe('ABCD')
+  })
+
+  it('with a registry: checks the policy type and lets the provider validate and narrow the params', () => {
+    expect(parseSealedManifest(nft, registry).params).toEqual({ gateId: GATE, soulbound: true })
+    expect(() => parseSealedManifest({ ...nft, policyType: 'mystery' }, registry)).toThrow(/unknown policy type/)
+    expect(() => parseSealedManifest({ ...nft, params: { gateId: GATE, soulbound: 'false' } }, registry)).toThrow(/soulbound must be a boolean/)
+    expect(() => parseSealedManifest({ ...nft, params: { gateId: 'nope' } }, registry)).toThrow(/gateId/)
+    expect(() => parseSealedManifest({ ...nft, params: undefined }, registry)).toThrow(/params are missing/)
+  })
+
+  it('drops unknown params keys (including __proto__) when a provider narrows them', () => {
+    const raw = JSON.parse(`{"gateId":"${GATE}","nftId":"${GATE}","__proto__":{"polluted":true},"extra":1}`)
+    const m = parseSealedManifest({ ...nft, params: raw }, registry)
+    expect(Object.keys(m.params ?? {}).sort()).toEqual(['gateId', 'nftId'])
+  })
+
+  it('accepts a time-lock manifest, which has no params to check', () => {
+    expect(parseSealedManifest({ policyType: 'time-lock', id: 'ab'.repeat(16), blobId: 'b', network: 'testnet' }, registry).policyType).toBe('time-lock')
   })
 })

@@ -107,6 +107,13 @@ export interface SealPolicyProvider<P = Record<string, unknown>> {
   verifyId(idBytes: Uint8Array, params: P): void
 
   /**
+   * Optional: validate the `params` of an untrusted manifest and return them narrowed (own, known keys only).
+   * Throw an `Error` on a malformed value (a string where a boolean belongs, a bad object id). When present,
+   * `parseSealedManifest(raw, registry)` calls it at import, so a bad manifest fails there instead of at build.
+   */
+  parseParams?(params: Record<string, unknown> | undefined): P
+
+  /**
    * Optional: suggest values for form fields by querying chain state (e.g. objects owned by the
    * connected wallet). Returns a map of `fieldName → suggestions[]`. Only fields with non-empty
    * suggestion arrays need be included. The UI renders a picker for those fields and falls back

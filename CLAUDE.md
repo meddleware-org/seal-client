@@ -43,7 +43,7 @@ one Move module 1:1.
   - SessionKeys are cached in memory only, keyed by address **and** package.
 - **`@mysten/seal` + `@mysten/sui` are peer deps.** The consuming app supplies a single instance;
   this package must not bundle its own. `@meddleware/access-gate-client` is the one runtime
-  dependency (`^0.0.2`): the nft-gate provider's `suggest()` reads gates through it (paged, exact types).
+  dependency (`^0.0.6`): the nft-gate provider's `suggest()` reads gates through it (paged, exact types).
 - **Two package ids and the version gate.**
   - `SealControllerConfig.originalId` is the identity namespace. It is used to encrypt, for the
     ciphertext check and for the SessionKey.

@@ -78,7 +78,9 @@ mainnet), because confidentiality beyond one operator needs at least two indepen
 it ships in a browser bundle, so do not rely on one for secrecy.
 
 Safety defaults: the threshold must lie in `[1, total weight]`; `verifyKeyServers` is on unless a
-server uses an aggregator; `checkShareConsistency` is on; and `decrypt` refuses a ciphertext whose
+server uses an aggregator (one switch for the whole configuration, so a mixed setup of an aggregator plus
+independent servers runs without URL verification for the independent ones too —
+`controller.verifiesKeyServers` tells you); `checkShareConsistency` is on; and `decrypt` refuses a ciphertext whose
 header names a different identity or policy package than expected.
 
 ## Package ids
@@ -154,7 +156,7 @@ page.pointers // newest first; page.cursor continues
 1. Add a Move module `seal_policies::<policy>` exposing `entry fun seal_approve(id, …)`.
 2. Implement a `SealPolicyProvider` here whose `buildId`/`buildApprove` match that module, and whose
    `verifyId` checks the identity layout (required — `decrypt` calls it before every approve).
-3. `registry.register(myProvider)`. No changes to existing providers or the controller.
+3. `registry.register(myProvider)` (a type that is already registered is refused; pass `{ replace: true }` to replace one on purpose). No changes to existing providers or the controller. A provider may also implement `parseParams` so `parseSealedManifest(raw, registry)` validates a manifest's params at import.
 4. If it ships in the default registry, add it to `PROVIDERS` in `tests/abi-table.ts` (the offline
    test fails until you do); the testnet ABI-drift check then covers its `seal_approve*`.
 

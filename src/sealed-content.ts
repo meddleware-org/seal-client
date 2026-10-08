@@ -123,6 +123,15 @@ export function parseSealedContentEvent(entry: CoreEventEntry, originalId: strin
   }
 }
 
+/** `parseSealedContentEvent`, with a row that fails to decode reported as `'invalid'` instead of thrown. */
+function tryParse(entry: CoreEventEntry, originalId: string): SealedContentPointer | null | 'invalid' {
+  try {
+    return parseSealedContentEvent(entry, originalId)
+  } catch {
+    return 'invalid'
+  }
+}
+
 /** Minimal structural subset of a core Sui client used for event queries (`SuiGrpcClient`). */
 export interface SealEventsClient {
   core: {
@@ -171,9 +180,13 @@ export interface SealedContentPage {
   indexedFromCheckpoint?: string
   /** Why the indexer was skipped, when a first page fell back to the full node. */
   indexerError?: string
+  /** Rows of this package's event that did not decode and were skipped (one bad row must not fail the page). */
+  skipped: number
 }
 
 const RPC_PAGE = 50
+/** At most 20 pages × 50 events are scanned per call, whatever `maxPages` says. */
+const MAX_RPC_PAGES = 20
 
 /**
  * Pointers published for `gateId`, newest first.
@@ -212,8 +225,10 @@ async function listFromRpc(
   before: string | null,
 ): Promise<SealedContentPage> {
   const gate = normalizeSuiAddress(options.gateId)
-  const maxPages = Math.max(1, options.maxPages ?? 20)
+  // Each page scans RPC_PAGE events of ALL gates (the event filter cannot select one), so the scan is capped.
+  const maxPages = Math.min(Math.max(1, Math.floor(options.maxPages ?? 20)), MAX_RPC_PAGES)
   const pointers: SealedContentPointer[] = []
+  let skipped = 0
   let cursor = before
   for (let page = 0; page < maxPages; page++) {
     const res = await client.core.listEvents({
@@ -223,13 +238,14 @@ async function listFromRpc(
       before: cursor,
     })
     for (const entry of res.events) {
-      const pointer = parseSealedContentEvent(entry, options.originalId)
-      if (pointer && pointer.gateId === gate && publishedBy(options)(pointer)) pointers.push(pointer)
+      const pointer = tryParse(entry, options.originalId)
+      if (pointer === 'invalid') skipped++
+      else if (pointer && pointer.gateId === gate && publishedBy(options)(pointer)) pointers.push(pointer)
     }
     cursor = res.hasNextPage ? res.endCursor : null
     if (!cursor || pointers.length >= limit) break
   }
-  return { pointers, cursor: cursor ? { source: 'rpc', value: cursor } : null, source: 'rpc' }
+  return { pointers, cursor: cursor ? { source: 'rpc', value: cursor } : null, source: 'rpc', skipped }
 }
 
 async function listFromIndexer(
@@ -247,11 +263,14 @@ async function listFromIndexer(
   })
 
   // The indexer is display-only: rows still have to be this package's event for this gate.
-  const pointers = body.events
-    .map((entry) => parseSealedContentEvent(entry, options.originalId))
-    .filter((p): p is SealedContentPointer => p !== null && p.gateId === gate && publishedBy(options)(p))
+  const parsed = body.events.map((entry) => tryParse(entry, options.originalId))
+  const skipped = parsed.filter((p) => p === 'invalid').length
+  const pointers = parsed.filter(
+    (p): p is SealedContentPointer => p !== null && p !== 'invalid' && p.gateId === gate && publishedBy(options)(p),
+  )
   return {
     pointers,
+    skipped,
     cursor: body.cursor ? { source: 'indexer', value: body.cursor } : null,
     source: 'indexer',
     indexedFromCheckpoint: body.indexedFromCheckpoint,

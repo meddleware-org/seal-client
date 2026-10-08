@@ -42,6 +42,10 @@ export interface SealControllerConfig {
    * Verify each key server's URL against its on-chain object before use (prevents a look-alike
    * server object pointing at a known URL). Defaults to `true` unless any server is reached through
    * an aggregator (committee mode), where per-server verification does not apply.
+   *
+   * The SDK offers one global switch, not one per server: in a mixed configuration (an aggregator plus
+   * independent servers) the default turns verification off for the independent servers too. See
+   * {@link SealController.verifiesKeyServers}.
    */
   verifyKeyServers?: boolean
   /**
@@ -96,13 +100,22 @@ export class SealController {
         ...(s.apiKey ? { apiKeyName: s.apiKeyName ?? 'X-API-Key', apiKey: s.apiKey } : {}),
       })),
       verifyKeyServers: cfg.verifyKeyServers ?? !cfg.serverConfigs.some((s) => s.aggregatorUrl),
-    })
+    }) // see `verifiesKeyServers`
     const totalWeight = cfg.serverConfigs.reduce((n, s) => n + (s.weight ?? 1), 0)
     if (!Number.isInteger(cfg.threshold) || cfg.threshold < 1 || cfg.threshold > totalWeight) {
       throw new Error(
         `threshold must be an integer in [1, ${totalWeight}] (the total server weight); got ${cfg.threshold}`,
       )
     }
+  }
+
+  /**
+   * Whether key-server URLs are verified against their on-chain objects. It is one SDK-wide switch: on by
+   * default, but off as soon as ANY server is reached through an aggregator — so in a mixed configuration
+   * the independent servers are not URL-verified either. Check this before trusting a mixed setup.
+   */
+  get verifiesKeyServers(): boolean {
+    return this.cfg.verifyKeyServers ?? !this.cfg.serverConfigs.some((s) => s.aggregatorUrl)
   }
 
   /** Encrypt `data` under policy `type` with `params`. Returns the identity (hex) + ciphertext. */
@@ -126,6 +139,11 @@ export class SealController {
    * Decrypt `ciphertext` sealed under policy `type` with identity `id` (hex, from the manifest).
    * `params` supplies the on-chain objects the policy's `seal_approve` needs. Prompts a single
    * wallet personal-message signature per address to mint a SessionKey (cached until expiry).
+   *
+   * Before any key is requested it checks, and throws on a mismatch: the id is even-length hex; the
+   * provider's `verifyId` (layout and consistency with `params`); that the ciphertext header names the
+   * same identity and this controller's policy package; and that the approve PTB holds only
+   * `seal_approve*` calls to the policy package.
    */
   async decrypt<P>(
     type: string,
@@ -212,7 +230,6 @@ export class SealController {
   }
 }
 
-/** Lower-case, `0x`-prefixed, zero-padded 32-byte hex id for comparisons. */
 /**
  * An approve PTB holds only `seal_approve*` calls to the policy package (the key servers reject
  * anything else; checking here fails fast and keeps a misbehaving provider from building more).
@@ -231,6 +248,7 @@ export function assertApproveOnly(tx: Transaction, publishedAt: string): void {
   }
 }
 
+/** Lower-case, `0x`-prefixed, zero-padded 32-byte hex id for comparisons. */
 function normalizeHexId(v: string): string {
   const hex = v.toLowerCase().replace(/^0x/, '')
   return `0x${hex.padStart(64, '0')}`

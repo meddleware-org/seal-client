@@ -22,4 +22,12 @@ describe('PolicyRegistry', () => {
     expect(r.list().map((p) => p.type).sort()).toEqual(['nft-gate', 'time-lock'])
     expect(r.get('time-lock')).toBe(timeLockProvider)
   })
+
+  it('refuses a second provider for a registered type unless replace is explicit', () => {
+    const r = new PolicyRegistry().register(createNftGateProvider())
+    expect(() => r.register(createNftGateProvider('0x1'))).toThrowError(/already registered/)
+    const replacement = createNftGateProvider('0x2')
+    r.register(replacement, { replace: true })
+    expect(r.get('nft-gate')).toBe(replacement)
+  })
 })

@@ -28,14 +28,16 @@ treated as high severity:
 3. **Identity bytes are namespaced and must match the on-chain decoders bit-for-bit.** `nft_gate` =
    `[32-byte gate id][16-byte nonce]`; `timelock` = `[8-byte BE unlock_ms][8-byte nonce]`.
    `src/bytes.ts` is the single source of truth on the client side.
-5. **Seal provides confidentiality, not authenticity.** A successful decrypt proves only that an item
+4. **Seal provides confidentiality, not authenticity.** A successful decrypt proves only that an item
    was sealed to the gate's namespace (anyone can do that and publish a pointer), not who wrote it.
    Discovery should be filtered to the gate's operators (`listSealedContent({ publishers })`,
    `gateOperators`). `encrypt` for `nft-gate` refuses an empty or zero gate id and, with
    `accessGateOriginalId` configured, a gate that is not a `Gate` of the linked `access_gate` package
    (such content could never be decrypted). A time lock refuses a value that would wrap past
    2^64 - 1 or an unlock time in the past (unless `allowPast`).
-4. **Nonces are CSPRNG-generated internally** (`crypto.getRandomValues`), never attacker-supplied.
+6. **Nonces are CSPRNG-generated internally** (`crypto.getRandomValues`), never attacker-supplied.
+7. **No secrets or protocol addresses are hardcoded** in shipped source (the only literal is the
+   canonical Sui Clock `0x6`).
 
 ### Nonce widths per policy (why they differ)
 
@@ -51,13 +53,16 @@ manifest — so the nonce is a *uniqueness / domain-separation* budget, not a se
 Both widths are fixed by the matching on-chain `seal_policies` module layout and are locked by
 `tests/providers.test.ts` ("nonce widths (F2)"); changing a width requires a coordinated change to
 the Move module and the conformance vectors.
-5. **No secrets or protocol addresses are hardcoded** in shipped source (the only literal is the
-   canonical Sui Clock `0x6`).
 
 ### Trust assumptions users should know
 
 - **Key servers.** Any `t` of the configured servers together can decrypt; fewer than `t` online
-  means no one can. The servers learn who asks and for which identity.
+  means no one can. The servers learn who asks and for which identity. Key-server URL verification is
+  one switch for the whole configuration: a mixed setup (an aggregator plus independent servers) runs
+  without it for the independent servers too (`SealController.verifiesKeyServers`).
+- **Only the current policy package decrypts.** A controller serves the one `originalId` it is configured
+  with. Content sealed under a superseded `seal_policies` namespace is not supported by this package: the
+  manifest records no namespace, and pre-v0.2 packages are republished rather than migrated.
 - **The policy package can change.** Access is decided by the `seal_policies` package. Until its
   UpgradeCap is burned (see that package's `CUSTODY.md`), whoever holds the cap can publish an
   upgrade that changes who may decrypt **existing** ciphertexts. Check the package's custody record
