@@ -91,7 +91,7 @@ export type SealPoliciesNetwork = keyof typeof SEAL_POLICIES_DEPLOYMENTS
  * @throws {Error} if there is no deployment recorded for \`network\`.
  */
 export function sealPoliciesDeployment(network: string): SealPoliciesDeployment {
-  const deployment = (SEAL_POLICIES_DEPLOYMENTS as Record<string, SealPoliciesDeployment>)[network]
+  const deployment = Object.hasOwn(SEAL_POLICIES_DEPLOYMENTS, network) ? (SEAL_POLICIES_DEPLOYMENTS as Record<string, SealPoliciesDeployment>)[network] : undefined
   if (!deployment) throw new Error(\`no seal_policies deployment recorded for \${network}\`)
   return deployment
 }

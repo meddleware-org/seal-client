@@ -24,6 +24,19 @@ export interface NftGateParams {
  */
 const NONCE_LEN = 16
 
+/**
+ * A gate id as 32 bytes. An empty, `0x`-only or all-zero id would namespace the content to gate
+ * `0x0`, which nobody can ever unlock, so it is refused.
+ */
+function requireGateId(gateId: string): Uint8Array {
+  if (typeof gateId !== 'string' || !/^0x[0-9a-fA-F]{1,64}$/.test(gateId)) {
+    throw new Error('nft-gate encrypt requires `gateId` (0x followed by up to 64 hex digits).')
+  }
+  const bytes = objectIdBytes(gateId)
+  if (bytes.every((b) => b === 0)) throw new Error('nft-gate gateId must not be the zero address.')
+  return bytes
+}
+
 function descriptor(): PolicyDescriptor {
   return {
     type: 'nft-gate',
@@ -58,7 +71,7 @@ export function createNftGateProvider(accessGateOriginalId = ''): SealPolicyProv
     type: 'nft-gate',
 
     buildId(params) {
-      return concatBytes(objectIdBytes(params.gateId), randomBytes(NONCE_LEN))
+      return concatBytes(requireGateId(params.gateId), randomBytes(NONCE_LEN))
     },
 
     verifyId(idBytes, params) {

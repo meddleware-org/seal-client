@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/seal-client",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Modular Seal encryption client for Sui: a pluggable policy registry (nft-gate, time-lock, …) plus a SealController that orchestrates threshold encrypt/decrypt and SessionKey lifecycle. The on-chain half is the seal_policies Move package.",
   "homepage": "https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/",
   "type": "module",
@@ -20,12 +20,22 @@
   ],
   "files": [
     "src",
+    "dist",
     "CHANGELOG.md"
   ],
   "exports": {
-    ".": "./src/index.ts",
-    "./controller": "./src/controller.ts",
-    "./deployments": "./src/deployments.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./controller": {
+      "types": "./dist/controller.d.ts",
+      "default": "./src/controller.ts"
+    },
+    "./deployments": {
+      "types": "./dist/deployments.d.ts",
+      "default": "./src/deployments.ts"
+    }
   },
   "scripts": {
     "gen:deployments": "node scripts/gen-deployments.mjs",
@@ -35,19 +45,21 @@
     "test:watch": "vitest",
     "test:integration": "SEAL_TESTNET=1 vitest run --config vitest.integration.config.ts",
     "lint:js": "eslint .",
-    "lint": "npm run lint:js"
+    "lint": "npm run lint:js",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@meddleware/access-gate-client": "^0.0.4"
+    "@meddleware/access-gate-client": "^0.0.6"
   },
   "peerDependencies": {
     "@mysten/seal": "^1.4.17",
-    "@mysten/sui": "^2.33.1"
+    "@mysten/sui": "^2.33.2"
   },
   "devDependencies": {
     "@meddleware/seal-policies-sui": "0.0.6",
     "@mysten/seal": "^1.4.17",
-    "@mysten/sui": "^2.33.1",
+    "@mysten/sui": "^2.33.2",
     "@types/node": "~24.12.2",
     "eslint": "^10.11.0",
     "jiti": "^2.7.0",

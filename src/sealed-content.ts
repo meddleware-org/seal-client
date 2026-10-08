@@ -146,6 +146,19 @@ export interface ListSealedContentOptions {
   indexer?: IndexerSource
   /** Full-node pages scanned per call (default 20). */
   maxPages?: number
+  /**
+   * Only list pointers published by these addresses. Seal gives confidentiality, not authenticity:
+   * anyone can seal content to a gate's namespace and publish a pointer for it, and a pass holder
+   * will decrypt it successfully. UIs should pass the gate's operators ({@link gateOperators}).
+   */
+  publishers?: string[]
+}
+
+/** Keep a pointer only if `publishers` is unset or lists its publisher (normalised comparison). */
+function publishedBy(options: ListSealedContentOptions): (p: SealedContentPointer) => boolean {
+  if (!options.publishers) return () => true
+  const allowed = new Set(options.publishers.map((a) => normalizeSuiAddress(a)))
+  return (p) => allowed.has(normalizeSuiAddress(p.publisher))
 }
 
 export interface SealedContentPage {
@@ -211,7 +224,7 @@ async function listFromRpc(
     })
     for (const entry of res.events) {
       const pointer = parseSealedContentEvent(entry, options.originalId)
-      if (pointer && pointer.gateId === gate) pointers.push(pointer)
+      if (pointer && pointer.gateId === gate && publishedBy(options)(pointer)) pointers.push(pointer)
     }
     cursor = res.hasNextPage ? res.endCursor : null
     if (!cursor || pointers.length >= limit) break
@@ -236,7 +249,7 @@ async function listFromIndexer(
   // The indexer is display-only: rows still have to be this package's event for this gate.
   const pointers = body.events
     .map((entry) => parseSealedContentEvent(entry, options.originalId))
-    .filter((p): p is SealedContentPointer => p !== null && p.gateId === gate)
+    .filter((p): p is SealedContentPointer => p !== null && p.gateId === gate && publishedBy(options)(p))
   return {
     pointers,
     cursor: body.cursor ? { source: 'indexer', value: body.cursor } : null,

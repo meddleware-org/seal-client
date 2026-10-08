@@ -57,14 +57,21 @@ describe('nftGateProvider', () => {
 
 describe('timeLockProvider', () => {
   it('encodes the unlock time big-endian (first 8 bytes) + a nonce', () => {
-    const id = timeLockProvider.buildId({ unlockMs: 256 })
+    const id = timeLockProvider.buildId({ unlockMs: 256, allowPast: true })
     expect(id.length).toBe(16) // 8-byte unlock + 8-byte nonce
     expect(bytesToHex(id.slice(0, 8))).toBe(bytesToHex(u64beBytes(256)))
   })
 
+  it('nft-gate refuses an empty, 0x-only, non-hex or zero gate id (it would namespace to a gate nobody can unlock)', () => {
+    for (const gateId of ['', '0x', '0x0', '0x' + '00'.repeat(32), 'gate', '0xzz', '0x' + 'a'.repeat(65)]) {
+      expect(() => nftGateProvider.buildId({ gateId }), gateId).toThrow()
+    }
+    expect(() => nftGateProvider.buildId({ gateId: '0xa' })).not.toThrow()
+  })
+
   it('builds a timelock seal_approve move call over the Clock', () => {
     const tx = new Transaction()
-    const id = timeLockProvider.buildId({ unlockMs: 1000 })
+    const id = timeLockProvider.buildId({ unlockMs: 1000, allowPast: true })
     timeLockProvider.buildApprove(tx, TARGET, id, {})
     const data = tx.getData()
     expect(JSON.stringify(data)).toContain('timelock')
@@ -73,12 +80,22 @@ describe('timeLockProvider', () => {
     expect(objectIds).toEqual([POLICY, '0x0000000000000000000000000000000000000000000000000000000000000006'])
   })
 
+  it('refuses an unlock time that would wrap, or that has already passed', () => {
+    expect(() => timeLockProvider.buildId({ unlockMs: 2n ** 64n })).toThrow(/at most/)
+    expect(() => timeLockProvider.buildId({ unlockMs: 2 ** 64 })).toThrow(/safe integer/)
+    expect(() => timeLockProvider.buildId({ unlockMs: Date.now() - 1000 })).toThrow(/not in the future/)
+    expect(() => timeLockProvider.buildId({ unlockMs: 0 })).toThrow(/not in the future/)
+    expect(() => timeLockProvider.buildId({ unlockMs: Date.now() + 60_000 })).not.toThrow()
+    expect(() => timeLockProvider.buildId({ unlockMs: 2n ** 64n - 1n })).not.toThrow()
+    expect(() => timeLockProvider.buildId({ unlockMs: Date.now() - 1000, allowPast: true })).not.toThrow()
+  })
+
   it('requires unlockMs to encrypt', () => {
     expect(() => timeLockProvider.buildId({})).toThrowError(/requires `unlockMs`/)
   })
 
   it('accepts only the 16-byte [unlock_ms][nonce] layout on decrypt', () => {
-    const id = timeLockProvider.buildId({ unlockMs: 1 })
+    const id = timeLockProvider.buildId({ unlockMs: 1, allowPast: true })
     expect(() => timeLockProvider.verifyId?.(id, {})).not.toThrow()
     expect(() => timeLockProvider.verifyId?.(id.slice(0, 8), {})).toThrowError(/16 bytes/)
   })
@@ -95,7 +112,7 @@ describe('nonce widths (F2)', () => {
   })
 
   it('time-lock identity is 8-byte unlock + 8-byte nonce (16 total)', () => {
-    const id = timeLockProvider.buildId({ unlockMs: 1 })
+    const id = timeLockProvider.buildId({ unlockMs: 1, allowPast: true })
     expect(id.length).toBe(16)
     expect(id.length - u64beBytes(1).length).toBe(8) // nonce width
   })
@@ -109,8 +126,8 @@ describe('nonce widths (F2)', () => {
   })
 
   it('nonces are unique per encryption (time-lock)', () => {
-    const a = timeLockProvider.buildId({ unlockMs: 1000 })
-    const b = timeLockProvider.buildId({ unlockMs: 1000 })
+    const a = timeLockProvider.buildId({ unlockMs: 1000, allowPast: true })
+    const b = timeLockProvider.buildId({ unlockMs: 1000, allowPast: true })
     expect(bytesToHex(a.slice(0, 8))).toBe(bytesToHex(b.slice(0, 8)))
     expect(bytesToHex(a.slice(8))).not.toBe(bytesToHex(b.slice(8)))
   })

@@ -26,6 +26,15 @@ describe('bytes', () => {
     expect(Array.from(u64beBytes(256))).toEqual([0, 0, 0, 0, 0, 0, 1, 0])
   })
 
+  it('rejects u64 values that would wrap, go negative or lose precision', () => {
+    expect(Array.from(u64beBytes(2n ** 64n - 1n))).toEqual([255, 255, 255, 255, 255, 255, 255, 255])
+    expect(() => u64beBytes(2n ** 64n)).toThrow(/at most/)
+    expect(() => u64beBytes(2n ** 64n + 1000n)).toThrow(/at most/)
+    expect(() => u64beBytes(-1)).toThrow(/non-negative/)
+    for (const bad of [1.5, Number.NaN, Infinity, 2 ** 53]) expect(() => u64beBytes(bad)).toThrow(/safe integer/)
+    expect(Array.from(u64beBytes(2n ** 60n))).toEqual([16, 0, 0, 0, 0, 0, 0, 0])
+  })
+
   it('concatenates', () => {
     const out = concatBytes(new Uint8Array([1, 2]), new Uint8Array([3]))
     expect(Array.from(out)).toEqual([1, 2, 3])

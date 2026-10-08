@@ -28,6 +28,13 @@ treated as high severity:
 3. **Identity bytes are namespaced and must match the on-chain decoders bit-for-bit.** `nft_gate` =
    `[32-byte gate id][16-byte nonce]`; `timelock` = `[8-byte BE unlock_ms][8-byte nonce]`.
    `src/bytes.ts` is the single source of truth on the client side.
+5. **Seal provides confidentiality, not authenticity.** A successful decrypt proves only that an item
+   was sealed to the gate's namespace (anyone can do that and publish a pointer), not who wrote it.
+   Discovery should be filtered to the gate's operators (`listSealedContent({ publishers })`,
+   `gateOperators`). `encrypt` for `nft-gate` refuses an empty or zero gate id and, with
+   `accessGateOriginalId` configured, a gate that is not a `Gate` of the linked `access_gate` package
+   (such content could never be decrypted). A time lock refuses a value that would wrap past
+   2^64 - 1 or an unlock time in the past (unless `allowPast`).
 4. **Nonces are CSPRNG-generated internally** (`crypto.getRandomValues`), never attacker-supplied.
 
 ### Nonce widths per policy (why they differ)

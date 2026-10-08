@@ -32,10 +32,16 @@ export function objectIdBytes(id: string): Uint8Array {
   return out
 }
 
+const U64_MAX = (1n << 64n) - 1n
+
 /** A u64 → 8 big-endian bytes (matches the on-chain decode in `seal_policies::timelock`). */
 export function u64beBytes(v: number | bigint): Uint8Array {
+  if (typeof v === 'number' && !Number.isSafeInteger(v)) {
+    throw new Error(`u64 must be a safe integer (got ${String(v)}); pass a bigint for larger values`)
+  }
   let n = BigInt(v)
   if (n < 0n) throw new Error('u64 must be non-negative')
+  if (n > U64_MAX) throw new Error('u64 must be at most 2^64 - 1')
   const out = new Uint8Array(8)
   for (let i = 7; i >= 0; i--) {
     out[i] = Number(n & 0xffn)

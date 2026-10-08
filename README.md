@@ -71,9 +71,11 @@ const plaintext = await seal.decrypt(
 ```
 
 A key-server committee reached through an aggregator (`aggregatorUrl`) counts as **one** server
-(its own threshold is internal). On mainnet, use the verified committee behind the Mysten mainnet
-aggregator at `threshold: 1`; that aggregator needs an Enoki API key, passed per server as
-`{ apiKeyName: 'X-API-Key', apiKey }`.
+(its own threshold is internal, and `verifyKeyServers` is off for it). MeddleWare's apps use
+**independent keyless key servers at `threshold: 2`** (workspace ADR-0002: three Open-mode servers on
+mainnet), because confidentiality beyond one operator needs at least two independent ones. An API key
+(`apiKeyName` / `apiKey`, for a Permissioned server or an authenticated aggregator) is **public** once
+it ships in a browser bundle, so do not rely on one for secrecy.
 
 Safety defaults: the threshold must lie in `[1, total weight]`; `verifyKeyServers` is on unless a
 server uses an aggregator; `checkShareConsistency` is on; and `decrypt` refuses a ciphertext whose
@@ -135,6 +137,15 @@ page.pointers // newest first; page.cursor continues
 
 - Pointers are decoded from the event BCS and must be this package's `SealedContentPublished`.
 - A pointer grants nothing: confidentiality is enforced by Seal and `nft_gate`.
+- **Seal gives confidentiality, not authenticity.** Anyone can seal content to a gate's namespace and
+  publish a pointer for it; a pass holder will decrypt it successfully. A successful decrypt proves
+  only that the item was sealed to the gate, not who wrote it. UIs should list only the operator's
+  pointers:
+
+  ```ts
+  const publishers = await gateOperators(suiClient, gateId, accessGateOriginalId, [operatorWallet])
+  const page = await listSealedContent(suiClient, { originalId, gateId, publishers })
+  ```
 - The optional indexer is display-only. A first page falls back to the full node if the indexer
   fails.
 

@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Stub @mysten/seal so no key-server IO happens: SealClient.decrypt returns bytes, and
 // SessionKey.create returns a fake key. We only care about the SessionKey caching/eviction here.
 // `vi.hoisted` makes createSpy available inside the hoisted vi.mock factory.
-const { createSpy, parseSpy } = vi.hoisted(() => ({
+const { createSpy, parseSpy, encryptSpy } = vi.hoisted(() => ({
+  encryptSpy: vi.fn(),
   createSpy: vi.fn(async () => ({
     getPersonalMessage: () => new Uint8Array([1, 2, 3]),
     setPersonalMessageSignature: vi.fn(async () => {}),
@@ -18,7 +19,8 @@ vi.mock('@mysten/seal', () => ({
     async decrypt() {
       return new Uint8Array([9])
     }
-    async encrypt() {
+    async encrypt(args: unknown) {
+      encryptSpy(args)
       return { encryptedObject: new Uint8Array() }
     }
   },
@@ -209,5 +211,73 @@ describe('approve PTB and identity checks (SEAL lens)', () => {
     const strict: SealPolicyProvider = { ...noopProvider, type: 'strict', verifyId }
     await expect(controllerWith(strict).decrypt('strict', {}, ID, sealed, opts)).rejects.toThrow(/layout mismatch/)
     expect(verifyId).toHaveBeenCalledOnce()
+  })
+})
+
+describe('encrypt binds to the original id (not published-at) and the configured threshold', () => {
+  const ORIGINAL = '0x' + '11'.repeat(32)
+  const PUBLISHED = '0x' + '22'.repeat(32)
+  const mk = (extra: Record<string, unknown> = {}, suiClient: unknown = {}) =>
+    new SealController(
+      { suiClient: suiClient as never, originalId: ORIGINAL, publishedAt: PUBLISHED, policyConfigId: '0x7', serverConfigs: [{ objectId: '0xs1' }, { objectId: '0xs2' }], threshold: 2, ...extra },
+      new PolicyRegistry().register(noopProvider).register(createNftGateProvider()),
+    )
+
+  it('after a package upgrade the namespace is still the ORIGINAL id', async () => {
+    encryptSpy.mockClear()
+    const { id } = await mk().encrypt('noop', {}, new Uint8Array([1]))
+    expect(encryptSpy).toHaveBeenCalledWith(expect.objectContaining({ packageId: ORIGINAL, threshold: 2, id }))
+    expect(encryptSpy.mock.calls[0]![0].packageId).not.toBe(PUBLISHED)
+  })
+
+  it('reads the gate first and refuses one that is not a Gate of the linked access_gate package', async () => {
+    const LINKED = '0x' + 'a5'.repeat(32)
+    const GATE = '0x' + '0a'.repeat(32)
+    const client = (type?: string) => ({ core: { getObject: vi.fn(async () => ({ object: { objectId: GATE, type } })) } })
+    encryptSpy.mockClear()
+    await mk({ accessGateOriginalId: LINKED }, client(`${LINKED}::access_gate::Gate`)).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))
+    expect(encryptSpy).toHaveBeenCalledTimes(1)
+    for (const type of [`${'0x' + 'b6'.repeat(32)}::access_gate::Gate`, `${LINKED}::access_gate::AdminCap`, `${LINKED}::other::Gate`, undefined]) {
+      encryptSpy.mockClear()
+      await expect(mk({ accessGateOriginalId: LINKED }, client(type)).encrypt('nft-gate', { gateId: GATE }, new Uint8Array([1]))).rejects.toThrow(/not a Gate of the linked/)
+      expect(encryptSpy).not.toHaveBeenCalled()
+    }
+  })
+})
+
+describe('SessionKey cache timing and coalescing', () => {
+  it('counts the early-expiry margin from key creation, not from when the slow signature returns', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(1_000_000)
+      const c = makeController()
+      const slowSign = vi.fn(async () => {
+        vi.advanceTimersByTime(5 * 60_000) // the user takes five minutes to approve
+        return { signature: 'sig' }
+      })
+      await c.decrypt('noop', {}, '00', new Uint8Array(), { address: '0xabc', signPersonalMessage: slowSign })
+      createSpy.mockClear()
+      // sessionTtlMin default 10 → valid until created + 9 min; now is created + 5 min: still cached.
+      await c.decrypt('noop', {}, '00', new Uint8Array(), { address: '0xabc', signPersonalMessage: slowSign })
+      expect(createSpy).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(4 * 60_000 + 1) // created + 9 min + 1 ms: past the margin
+      await c.decrypt('noop', {}, '00', new Uint8Array(), { address: '0xabc', signPersonalMessage: slowSign })
+      expect(createSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('concurrent decrypts share one mint and one wallet prompt', async () => {
+    const c = makeController()
+    const sign = vi.fn(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+      return { signature: 'sig' }
+    })
+    createSpy.mockClear()
+    const o = { address: '0xabc', signPersonalMessage: sign }
+    await Promise.all([c.decrypt('noop', {}, '00', new Uint8Array(), o), c.decrypt('noop', {}, '00', new Uint8Array(), o), c.decrypt('noop', {}, '00', new Uint8Array(), o)])
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    expect(sign).toHaveBeenCalledTimes(1)
   })
 })

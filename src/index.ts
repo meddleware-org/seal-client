@@ -40,4 +40,6 @@ export {
   type SealedContentPage,
   type SealedContentPointer,
 } from './sealed-content.js'
+export { gateOperators } from './operators.js'
+export { assertLinkedGate } from './gate-check.js'
 // Deployment ids are in the `@meddleware/seal-client/deployments` subpath.

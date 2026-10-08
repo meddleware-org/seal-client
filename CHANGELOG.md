@@ -3,6 +3,30 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.16] - 2026-10-08
+
+### Changed (breaking, pre-v0.2)
+
+- `@meddleware/access-gate-client` ^0.0.6.
+- `timeLockProvider.buildId` rejects a value that would wrap past 2^64 - 1 (`u64beBytes` now throws),
+  a non-safe-integer number, and an unlock time in the past unless `allowPast: true`; `unlockMs` may be a
+  `bigint`.
+- The `nft-gate` provider refuses an empty, `0x`-only, non-hex or zero gate id.
+- SessionKey cache margin counts from key creation (not from the signature returning), and concurrent
+  decrypts share one mint and one wallet prompt.
+- `sealPoliciesDeployment` no longer resolves `constructor`, `toString`, `__proto__` etc.
+- Ships `.d.ts` (`dist/`, like its siblings); `prepublishOnly` builds them.
+- README follows ADR-0002 (independent keyless servers at threshold 2; an API key in a bundle is public).
+
+### Added
+
+- `listSealedContent({ publishers })` and `gateOperators(client, gateId, accessGateOriginalId, extra?)`:
+  Seal gives confidentiality, not authenticity, so UIs should list only the operator's pointers.
+- `SealControllerConfig.accessGateOriginalId` + `assertLinkedGate`: `encrypt` for `nft-gate` refuses a
+  gate that is not a `Gate` of the linked `access_gate` package.
+- Hermetic tests for `encrypt` (namespace is the original id after an upgrade), session timing and
+  coalescing, the publisher filter and the u64 boundaries.
+
 ## [0.0.15] - 2026-10-03
 
 ### Changed

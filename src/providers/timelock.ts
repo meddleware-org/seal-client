@@ -3,7 +3,12 @@ import { u64beBytes, randomBytes, concatBytes } from '../bytes.js'
 
 export interface TimeLockParams {
   /** Unlock time in epoch milliseconds. Needed to encrypt; not needed to decrypt. */
-  unlockMs?: number
+  unlockMs?: number | bigint
+  /**
+   * Allow an unlock time that has already passed. By default encrypting with a past time throws:
+   * content "locked" until a moment that is gone is public as soon as it is stored.
+   */
+  allowPast?: boolean
 }
 
 /** The shared on-chain Clock object id. */
@@ -34,7 +39,12 @@ export const timeLockProvider: SealPolicyProvider<TimeLockParams> = {
     if (params.unlockMs == null) {
       throw new Error('time-lock encrypt requires `unlockMs` (unlock time in epoch ms).')
     }
-    return concatBytes(u64beBytes(params.unlockMs), randomBytes(NONCE_LEN))
+    // u64beBytes rejects non-integers, negatives and anything that would wrap past 2^64 - 1.
+    const unlock = u64beBytes(params.unlockMs)
+    if (!params.allowPast && BigInt(params.unlockMs) <= BigInt(Date.now())) {
+      throw new Error('time-lock unlockMs is not in the future; pass allowPast: true if that is intended.')
+    }
+    return concatBytes(unlock, randomBytes(NONCE_LEN))
   },
 
   verifyId(idBytes) {

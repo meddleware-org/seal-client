@@ -75,7 +75,7 @@ describe.skipIf(process.env.SEAL_TESTNET !== '1')(
         const plaintext = new TextEncoder().encode('Hello, Seal testnet!')
         const unlockMs = Date.now() - 10 * 60_000 // 10 min in the past
 
-        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs }, plaintext)
+        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs, allowPast: true }, plaintext)
         expect(id).toMatch(/^[0-9a-f]+$/)
 
         const decrypted = await controller.decrypt('time-lock', {}, id, ciphertext, {
@@ -99,7 +99,7 @@ describe.skipIf(process.env.SEAL_TESTNET !== '1')(
 
         const plaintext = new TextEncoder().encode('not yet')
         const unlockMs = Date.now() + 24 * 60 * 60_000 // a day in the future
-        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs }, plaintext)
+        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs, allowPast: true }, plaintext)
 
         // The key servers dry-run `seal_approve`; the on-chain Clock check aborts, so no shares
         // are released and decryption fails closed.
@@ -126,7 +126,7 @@ describe.skipIf(process.env.SEAL_TESTNET !== '1')(
 
         const plaintext = new TextEncoder().encode('session eviction test')
         const unlockMs = Date.now() - 10 * 60_000
-        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs }, plaintext)
+        const { id, ciphertext } = await controller.encrypt('time-lock', { unlockMs, allowPast: true }, plaintext)
 
         await controller.decrypt('time-lock', {}, id, ciphertext, { address, signPersonalMessage })
         expect(signCallCount).toBe(1)

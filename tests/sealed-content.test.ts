@@ -115,6 +115,36 @@ describe('parseSealedContentEvent', () => {
   })
 })
 
+describe('publisher filter (Seal gives confidentiality, not authenticity)', () => {
+  const OPERATOR = '0x' + '0d'.repeat(32)
+  const rogue = (label: string): CoreEventEntry => {
+    const e = event(GATE, label)
+    return { ...e, bcs: Published.serialize({ content_id: '0x' + '0c'.repeat(32), gate_id: GATE, blob_id: 'blob', seal_id: 'seal', label, publisher: '0x' + 'ba'.repeat(32) }).toBytes() }
+  }
+
+  it('lists only pointers published by the given addresses, on the full node and the indexer', async () => {
+    const rows = [rogue('Official update'), event(GATE, 'real')]
+    const rpc = await listSealedContent(eventsClient([rows]), { originalId: PKG, gateId: GATE, publishers: [OPERATOR] })
+    expect(rpc.pointers.map((p) => p.label)).toEqual(['real'])
+    const idx = vi.fn(async () => Response.json({ events: rows.map((e) => ({ ...e, bcs: toBase64(e.bcs as Uint8Array) })), cursor: null }))
+    const page = await listSealedContent(eventsClient([[]]), {
+      originalId: PKG,
+      gateId: GATE,
+      publishers: ['0xD'.padEnd(3, '0') === '0xD00' ? OPERATOR : OPERATOR],
+      indexer: { url: 'https://i.example', network: 'testnet', fetch: idx as unknown as typeof fetch },
+    })
+    expect(page.pointers.map((p) => p.label)).toEqual(['real'])
+  })
+
+  it('compares publishers normalised, and lists everything when no filter is given', async () => {
+    const rows = [rogue('a'), event(GATE, 'b')]
+    expect((await listSealedContent(eventsClient([rows]), { originalId: PKG, gateId: GATE })).pointers).toHaveLength(2)
+    const short = '0x' + '0d'.repeat(32)
+    expect((await listSealedContent(eventsClient([rows]), { originalId: PKG, gateId: GATE, publishers: [short.toUpperCase().replace('0X', '0x')] })).pointers).toHaveLength(1)
+    expect((await listSealedContent(eventsClient([rows]), { originalId: PKG, gateId: GATE, publishers: [] })).pointers).toHaveLength(0)
+  })
+})
+
 describe('listSealedContent', () => {
   it('pages the full node, keeps only the gate, and returns a cursor', async () => {
     const client = eventsClient([[event(OTHER_GATE)], [event(GATE, 'a')], [event(GATE, 'b')]])

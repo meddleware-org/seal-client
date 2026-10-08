@@ -3,6 +3,8 @@ import type { SealCompatibleClient } from '@mysten/seal'
 import { Transaction } from '@mysten/sui/transactions'
 import type { PolicyRegistry } from './registry.js'
 import { bytesToHex, hexToBytes } from './bytes.js'
+import { assertLinkedGate } from './gate-check.js'
+import type { SealSuggestClient } from './types.js'
 
 /** One key server in the threshold committee. */
 export interface KeyServerConfig {
@@ -47,6 +49,12 @@ export interface SealControllerConfig {
    * `true`, recommended by Seal for sensitive data).
    */
   checkShareConsistency?: boolean
+  /**
+   * The `access_gate` package's original id that `seal_policies` links. When set, `encrypt` for the
+   * `nft-gate` policy reads the gate first and refuses one that is not a `Gate` of that package
+   * (content sealed to it could never be decrypted).
+   */
+  accessGateOriginalId?: string
 }
 
 /** Wallet hook: sign a personal message, returning the signature (base64). */
@@ -67,6 +75,7 @@ export interface EncryptResult {
 export class SealController {
   private readonly client: SealClient
   private readonly sessions = new Map<string, { key: SessionKey; expiresAt: number }>()
+  private readonly minting = new Map<string, Promise<SessionKey>>()
 
   constructor(
     private readonly cfg: SealControllerConfig,
@@ -100,6 +109,10 @@ export class SealController {
   async encrypt<P>(type: string, params: P, data: Uint8Array): Promise<EncryptResult> {
     const provider = this.registry.get<P>(type)
     const id = bytesToHex(provider.buildId(params))
+    const gateId = (params as { gateId?: unknown } | null)?.gateId
+    if (type === 'nft-gate' && this.cfg.accessGateOriginalId && typeof gateId === 'string') {
+      await assertLinkedGate(this.cfg.suiClient as unknown as SealSuggestClient, gateId, this.cfg.accessGateOriginalId)
+    }
     const { encryptedObject } = await this.client.encrypt({
       threshold: this.cfg.threshold,
       packageId: this.cfg.originalId,
@@ -171,7 +184,20 @@ export class SealController {
     const cached = this.sessions.get(this.sessionKeyId(address))
     if (cached && cached.expiresAt > Date.now()) return cached.key
 
+    // Concurrent decrypts share one mint (and one wallet prompt).
+    const id = this.sessionKeyId(address)
+    const pending = this.minting.get(id)
+    if (pending) return pending
+    const minted = this.mint(address, sign, id).finally(() => this.minting.delete(id))
+    this.minting.set(id, minted)
+    return minted
+  }
+
+  private async mint(address: string, sign: SignPersonalMessage, id: string): Promise<SessionKey> {
     const ttlMin = this.cfg.sessionTtlMin ?? 10
+    // The key's lifetime starts when it is created and is bound into the message the wallet signs,
+    // so the cache margin counts from here, not from when the (possibly slow) signature returns.
+    const createdAt = Date.now()
     const key = await SessionKey.create({
       address,
       packageId: this.cfg.originalId,
@@ -181,10 +207,7 @@ export class SealController {
     const { signature } = await sign(key.getPersonalMessage())
     await key.setPersonalMessageSignature(signature)
     // Expire a minute early so we never hand a just-expired key to a key server.
-    this.sessions.set(this.sessionKeyId(address), {
-      key,
-      expiresAt: Date.now() + (ttlMin - 1) * 60_000,
-    })
+    this.sessions.set(id, { key, expiresAt: createdAt + (ttlMin - 1) * 60_000 })
     return key
   }
 }
