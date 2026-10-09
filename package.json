@@ -61,7 +61,7 @@
     "@meddleware/seal-policies-sui": "0.0.7",
     "@mysten/seal": "^1.4.18",
     "@mysten/sui": "^2.33.2",
-    "@types/node": "~24.12.2",
+    "@types/node": "~26.6.4",
     "eslint": "^10.11.0",
     "jiti": "^2.7.0",
     "typescript": "~6.0.3",
