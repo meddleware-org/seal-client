@@ -3,6 +3,12 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.19] - 2026-10-09
+
+### Changed
+
+- Deployments regenerated for the 2026-10-09 testnet publication (seal_policies 0x0c8f7349…, @meddleware/seal-policies-sui 0.0.7); depends on access-gate-client ^0.0.8
+
 ## [0.0.18] - 2026-10-08
 
 ### Security
