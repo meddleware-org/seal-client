@@ -844,7 +844,7 @@ provider for a registered type throws unless `replace` is passed (`registry.ts`)
 
 ### F20 — Documentation drift
 
-**Severity:** Info   **Disposition:** RESOLVED (0.0.17; the two residuals fixed in 0.0.20, commit pending)
+**Severity:** Info   **Disposition:** RESOLVED (0.0.17; the two residuals fixed in 0.0.20, commit `48fd9d6`)
 
 - **`SECURITY.md` "Security model":** invariant 5 follows the nonce-width subsection, so the numbered
   list is split and renders as a new list.
@@ -948,7 +948,7 @@ is missing would close the gap without making the read the default.
 
 ### F25 — `gateOperators` has no hermetic test
 
-**Severity:** Low   **Disposition:** RESOLVED (0.0.20, commit pending)
+**Severity:** Low   **Disposition:** RESOLVED (0.0.20, commit `48fd9d6`)
 **Where:** `src/operators.ts`; `tests/` (no reference to `gateOperators`).
 
 **Issue:**
@@ -1370,7 +1370,7 @@ All four are answered; the answers are decisions, not open items.
     "Mainnet release custody", "Mainnet Seal key servers"); external review.
   - **No new findings.** The Seal documentation basis was not re-fetched.
 
-- 2026-10-18 — fix wave on the working tree after `v0.0.19` (`ac56f2b`); release 0.0.20, commit pending.
+- 2026-10-18 — fix wave on the working tree after `v0.0.19` (`ac56f2b`); release 0.0.20, commit `48fd9d6`.
   - **Changed:** `@meddleware/access-gate-client` bumped to `^0.0.9` (abort codes 15/16, `validateGatePolicy`;
     no source change needed); `engines.node` `>=24` (fleet decision D41; F18 `engines` item now done);
     `gateOperators` tests added (F25 RESOLVED); `CLAUDE.md` and `SECURITY.md` residuals fixed (F20 RESOLVED).
