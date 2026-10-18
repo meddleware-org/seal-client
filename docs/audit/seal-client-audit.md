@@ -22,15 +22,17 @@ scoped, not a token this package issues), no signing scripts and no image.
 
 **Deployment status:**
 
-- npm `@meddleware/seal-client` **0.0.19**, published from tag `v0.0.19` = `3527c58` (2026-10-09). It
-  carries an SLSA v1 provenance attestation (re-checked with `npm view` 2026-10-09). `main` HEAD is
-  `b4a42ea`, one Dependabot group bump after the tag (unreleased).
-- It is consumed at `^0.0.19` by seal-ui and the docs site.
+- npm `@meddleware/seal-client` **0.0.20** (`latest`, published 2026-10-18T09:06Z), from tag `v0.0.20` =
+  `9ef93f9` (code commit `48fd9d6`; the later commit only records the hash in this audit). It carries an SLSA v1
+  provenance attestation (`dist.attestations`, checked with `npm view` 2026-10-18). 0.0.19 (tag `v0.0.19` =
+  `3527c58`, 2026-10-09) was the version of the 2026-10-09 pass; the Dependabot group bump `b4a42ea` shipped with 0.0.20.
+- It is consumed at `^0.0.20` (bumped 2026-10-18, verified in `repos/*/package.json`) by seal-ui, the docs and
+  dev sites and sui-indexer; it was `^0.0.19` for seal-ui and docs on 2026-10-09.
 - It targets `seal_policies` on testnet only (no mainnet publication exists): `0x0c8f7349…` (republished
   2026-10-09, links `access_gate` `0xd7ddaa94…`). Mainnet publication and the Seal mainnet key-server
   terms are maintainer items (`OPERATOR_TASKS.md` "Mainnet release custody", "Mainnet Seal key servers").
 
-**Review date:** 2026-10-03; re-verified 2026-10-09
+**Review date:** 2026-10-03; re-verified 2026-10-09; fix wave 2026-10-18; release status 2026-10-18
 **Reviewer:** Internal review
 **Severity ceiling:** High.
 
@@ -43,7 +45,7 @@ scoped, not a token this package issues), no signing scripts and no image.
   no finding is open above **Low**.
 
 **Status:** first in-repo pass (2026-10-03); re-verified against 0.0.19 on 2026-10-09. Every first-pass
-finding was fixed in 0.0.16–0.0.19 except the live nft-gate negatives (F10, maintainer-only). The 2026-10-18 fix wave (0.0.20) closed F20 and F25.
+finding was fixed in 0.0.16–0.0.19 except the live nft-gate negatives (F10, maintainer-only). The 2026-10-18 fix wave (0.0.20) closed F20 and F25; 0.0.20 is released (npm, 2026-10-18) and consumed at `^0.0.20`.
 
 **Finding IDs.** The tests and `SECURITY.md` cite three findings of an earlier workspace-corpus
 audit: `F2` (nonce widths), `F4` (non-hex rejection) and `F5` (id↔params cross-check). Those IDs and
@@ -289,7 +291,7 @@ seal-ui (own audit; consumer facts cited); the read-indexer service.
 | `SEAL_TESTNET=1 npm run test:integration` | **3 files, 9 tests passed** (ABI drift against the new package, `SealedContentPublished` decode, time-lock round trip over the independent servers) |
 | `npm pack --dry-run` | 31 files, 29.9 kB: `src/**` (13), `dist/**` declarations (13), `CHANGELOG.md`, `README.md`, `SECURITY.md`, `LICENSE`, `package.json`. No tests or scripts. |
 | `npm ls @mysten/sui @mysten/seal @mysten/bcs @meddleware/access-gate-client` | one copy each (2.35.0 / 1.4.19 / 2.1.2 / 0.0.8), deduped through access-gate-client |
-| `npm view @meddleware/seal-client@0.0.19` | SLSA v1 provenance attestation present; `@meddleware/seal-policies-sui@0.0.7` also attested |
+| `npm view @meddleware/seal-client@0.0.19` | SLSA v1 provenance attestation present; `@meddleware/seal-policies-sui@0.0.7` also attested (2026-10-18: `latest` is 0.0.20, published 2026-10-18T09:06Z, attestation present) |
 | First-pass scratch probe (2026-10-03) | confirmed F7, F8, F12 and F14 against 0.0.15; each is now pinned by a hermetic test (see the findings) |
 
 **Working tree:** clean apart from the untracked `docs/` directory holding this audit; `node_modules/` and `dist/` are git-ignored.
@@ -398,7 +400,7 @@ bounded on-chain (string limits) but not in number.
 - `SECURITY.md` invariant 4 and the README ("Seal gives confidentiality, not authenticity") state that a
   successful decrypt proves only that an item was sealed to the gate's namespace.
 - seal-ui `src/sealed-content.ts` lists operator-only pointers by default (`gateOperators`); `includeOthers`
-  is an explicit "every publisher" view. It consumes seal-client `^0.0.19`.
+  is an explicit "every publisher" view. It consumes seal-client `^0.0.20` (was `^0.0.19`).
 - Tests: `tests/sealed-content.test.ts` "lists only pointers published by the given addresses, on the full
   node and the indexer" and "compares publishers normalised, and lists everything when no filter is given".
 - Remediation item 4 (drop a pointer whose `sealId` prefix differs from its `gateId`) was not implemented:
@@ -923,7 +925,7 @@ citations of invariants 1, 2 and 4 are unchanged; no test pins documentation tex
 - **Strict TypeScript.** `strict` plus `noUncheckedIndexedAccess`.
 - **Single SDK copy.** SDKs are peer dependencies.
 - **Release chain.** Actions are SHA-pinned; least-privilege `permissions`; OIDC `--provenance`
-  (verified for 0.0.19); tag == version; idempotent publish; the tag workflow runs the full CI workflow
+  (verified for 0.0.19 and 0.0.20); tag == version; idempotent publish; the tag workflow runs the full CI workflow
   first; a weekly live testnet run.
 
 ### F24 — The gate-type and soulbound checks at `encrypt` run only when `accessGateOriginalId` is configured
@@ -1052,7 +1054,7 @@ operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
 | --- | --- | --- |
 | Actions pinned | Yes | SHA pins in both workflows |
 | Least privilege | Yes | `contents: read`; `id-token: write` only on `publish-npm` |
-| OIDC trusted publishing | Yes | SLSA v1 attestation for 0.0.19 (`npm view`, 2026-10-09) |
+| OIDC trusted publishing | Yes | SLSA v1 attestation for 0.0.19 (`npm view`, 2026-10-09) and 0.0.20 (2026-10-18) |
 | Tag-gated, idempotent publish | Yes | `v*`; tag == version; registry probe |
 | Verification parity | Yes | `npm-publish.yml` calls `node-ci.yml` as its `verify` job (audit, `check:deployments`, type-check, lint, test, build, package contents); no `--if-present` (F18) |
 | Live suite | Yes | weekly `live.yml` (Mondays 05:47 UTC, read-only, no secrets; F10) |
@@ -1176,7 +1178,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
   wrong namespace, paused gate) — F10. DEFERRED, maintainer-only: needs a funded testnet wallet holding a
   pass for a test gate; only "too early" runs live today.
 - [x] live suite in CI on a schedule — weekly `live.yml` (F10, F18)
-- [x] npm package with provenance; shared-dependency matrix aligned — 0.0.19, SLSA v1 attestation (0.0.20 pending release)
+- [x] npm package with provenance; shared-dependency matrix aligned — 0.0.19 and 0.0.20, SLSA v1 attestations (0.0.20 released 2026-10-18, `dist.attestations` checked)
 
 ### pre-mainnet
 
@@ -1215,7 +1217,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
   - the `access_gate` id used for suggestions and the encrypt-time gate check is caller-supplied, not
     derived from the one `seal_policies` links (F7); a wrong id fails closed.
 - **Pre-v0.2 policy:** F7, F8, F9, F12, F14 and F16 changed exported types without shims (breaking changes
-  in 0.0.16–0.0.18, patch-only bumps until go-live; seal-ui bumped in step, consuming `^0.0.19`).
+  in 0.0.16–0.0.18, patch-only bumps until go-live; seal-ui bumped in step, consuming `^0.0.19`; `^0.0.20` since the 2026-10-18 release).
 - **Shared with sibling audits:**
   - access-gate-client F5 / F7 / F8 ↔ F12 / F15;
   - seal-policies-sui F4 / OQ4 ↔ F6;
@@ -1382,6 +1384,11 @@ All four are answered; the answers are decisions, not open items.
   - **Still not done (maintainer or mainnet):** unchanged from 2026-10-09 (live nft-gate negatives, mainnet
     publication, key-server terms, UpgradeCap custody, external review).
   - **No new findings.**
+- 2026-10-18 (later) — released (0.0.20), consumers bumped (seal-ui, docs, dev and sui-indexer: `^0.0.20`). `npm view` shows
+  `@meddleware/seal-client` 0.0.20 as `latest`, published 2026-10-18T09:06Z, with SLSA v1 provenance
+  (`dist.attestations`); tag `v0.0.20` = `9ef93f9` (code `48fd9d6`). The Section D provenance box
+  ("0.0.20 pending release") is updated with that evidence; the unticked boxes are unchanged (live nft-gate negatives,
+  mainnet items, external review).
 
 ## Pre-save consistency checklist (this pass)
 
