@@ -130,7 +130,7 @@ describe('publisher filter (Seal gives confidentiality, not authenticity)', () =
     const page = await listSealedContent(eventsClient([[]]), {
       originalId: PKG,
       gateId: GATE,
-      publishers: ['0xD'.padEnd(3, '0') === '0xD00' ? OPERATOR : OPERATOR],
+      publishers: [OPERATOR],
       indexer: { url: 'https://i.example', network: 'testnet', fetch: idx as unknown as typeof fetch },
     })
     expect(page.pointers.map((p) => p.label)).toEqual(['real'])

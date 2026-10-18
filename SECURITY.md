@@ -35,8 +35,8 @@ treated as high severity:
    `accessGateOriginalId` configured, a gate that is not a `Gate` of the linked `access_gate` package
    (such content could never be decrypted). A time lock refuses a value that would wrap past
    2^64 - 1 or an unlock time in the past (unless `allowPast`).
-6. **Nonces are CSPRNG-generated internally** (`crypto.getRandomValues`), never attacker-supplied.
-7. **No secrets or protocol addresses are hardcoded** in shipped source (the only literal is the
+5. **Nonces are CSPRNG-generated internally** (`crypto.getRandomValues`), never attacker-supplied.
+6. **No secrets or protocol addresses are hardcoded** in shipped source (the only literal is the
    canonical Sui Clock `0x6`).
 
 ### Nonce widths per policy (why they differ)

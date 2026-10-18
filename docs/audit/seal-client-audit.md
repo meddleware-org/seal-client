@@ -43,7 +43,7 @@ scoped, not a token this package issues), no signing scripts and no image.
   no finding is open above **Low**.
 
 **Status:** first in-repo pass (2026-10-03); re-verified against 0.0.19 on 2026-10-09. Every first-pass
-finding was fixed in 0.0.16–0.0.19 except the live nft-gate negatives (F10, maintainer-only).
+finding was fixed in 0.0.16–0.0.19 except the live nft-gate negatives (F10, maintainer-only). The 2026-10-18 fix wave (0.0.20) closed F20 and F25.
 
 **Finding IDs.** The tests and `SECURITY.md` cite three findings of an earlier workspace-corpus
 audit: `F2` (nonce widths), `F4` (non-hex rejection) and `F5` (id↔params cross-check). Those IDs and
@@ -62,9 +62,9 @@ renumber the new findings when relocating it, and leave a pointer stub at the co
 
 `files` holds `src`, `dist`, `CHANGELOG.md` and `SECURITY.md`.
 **Runtime targets:** browsers (via Vite in seal-ui and the dashboard) and Node (integration tests).
-There is no `engines` field, like the sibling libraries (F18).
+`engines.node` is `>=24` (fleet decision D41; F18).
 **Peer dependencies:** `@mysten/seal` `^1.4.18` and `@mysten/sui` `^2.33.2` (both also
-devDependencies). The runtime dependency is `@meddleware/access-gate-client` `^0.0.8`.
+devDependencies). The runtime dependency is `@meddleware/access-gate-client` `^0.0.9` (0.0.20; `^0.0.8` at 0.0.19).
 
 **Sui SDK:** `@mysten/sui` `^2.33.2` (installed 2.35.0, deduped). **Transport:** gRPC core API
 through structural client types, plus an optional HTTPS read-indexer (display only). No JSON-RPC.
@@ -150,10 +150,9 @@ unsupported; mainnet key servers Overclock / NodeInfra / H2O Open mode 2-of-3, E
   ADR-0002), F12 (`Object.hasOwn`), F14 (manifest and params validation), F15 (skip-and-count, scan cap),
   F17 (soulbound-only), F18 (declarations, `SECURITY.md`, CI parity), F19 (replace guard).
 - **Mitigated:** F10 (hermetic `encrypt` tests and the weekly live run; the live nft-gate negatives remain
-  and are maintainer-only), F13 (`verifiesKeyServers`; the SDK switch itself is unchanged), F20 (two
-  cosmetic doc residuals).
+  and are maintainer-only), F13 (`verifiesKeyServers`; the SDK switch itself is unchanged).
 - **Adjudicated:** F16 (legacy namespaces unsupported), F24 (the gate and soulbound checks are opt-in).
-- **Accepted risk:** F25 (`gateOperators` has no hermetic test).
+- **Since resolved (0.0.20, 2026-10-18):** F25 (`gateOperators` tests added) and F20 (the two doc residuals fixed).
 
 What the first pass found, for the record:
 
@@ -272,7 +271,7 @@ Critical / High / Medium / Low / Info / Positive (unchanged across the corpus).
   conformance literals, `Published.toml` / `deployments.json`.
 - `seal-ui` (`src/config.ts` committee defaults; `src/seal.ts` `clearSession` wiring;
   `src/sealed-content.ts` operator-filtered discovery, `src/manifest-guard.ts`).
-- `access-gate-client` 0.0.8 (`fetchOwnedGates`, `fetchGate`, `readIndexerEvents`).
+- `access-gate-client` 0.0.9 (`fetchOwnedGates`, `fetchGate`, `readIndexerEvents`).
 
 **Out of scope:** Seal and `@mysten/seal` internals; the key servers; the Move package (own audit);
 seal-ui (own audit; consumer facts cited); the read-indexer service.
@@ -344,7 +343,7 @@ the exact 48-byte layout. Moved lines: the former `controller.ts:128` is now `:1
 
 ### F6 — Discovered sealed content is not authenticated: anyone can encrypt to a gate's namespace and publish a pointer that decrypts successfully
 
-**Severity:** Medium   **Disposition:** RESOLVED (0.0.16, `affd00b`; the optional pointer-prefix check is ADJUDICATED; `gateOperators` test gap is F25)
+**Severity:** Medium   **Disposition:** RESOLVED (0.0.16, `affd00b`; the optional pointer-prefix check is ADJUDICATED; `gateOperators` is pinned by `tests/operators.test.ts`, F25)
 **Where:**
 
 - `src/sealed-content.ts:176-246` (`listSealedContent` filters by gate only);
@@ -406,7 +405,7 @@ bounded on-chain (string limits) but not in number.
   ADJUDICATED. `decrypt` already runs `verifyId` against the pointer's `gateId`, so an inconsistent pointer
   fails closed at decrypt instead of showing content.
 - The library default stays unfiltered by design: it cannot know a gate's publishing wallet, so the filter
-  is the caller's choice and the documented default for UIs. `gateOperators` has no hermetic test (F25).
+  is the caller's choice and the documented default for UIs. `gateOperators` is pinned by `tests/operators.test.ts` (F25).
 
 ### F7 — `encrypt` does not validate the gate: empty, unknown or superseded-package gates make content permanently undecryptable
 
@@ -705,7 +704,7 @@ Without a registry the guard is still shape-only plus hex `id`, by design.
 
 ### F15 — Discovery robustness inherited from access-gate-client
 
-**Severity:** Info   **Disposition:** RESOLVED (0.0.17, `cfd4a5e`; reader fixes arrive through `access-gate-client` ^0.0.8)
+**Severity:** Info   **Disposition:** RESOLVED (0.0.17, `cfd4a5e`; reader fixes arrive through `access-gate-client` ^0.0.9)
 **Where:** `src/sealed-content.ts:105-124, 222-246`.
 
 **Issue:**
@@ -728,7 +727,7 @@ Without a registry the guard is still shape-only plus hex `id`, by design.
 `MAX_RPC_PAGES = 20` pages of 50 events whatever `maxPages` says. Tests: `tests/sealed-content.test.ts`
 "skips and counts a row that does not decode instead of failing the page", "does the same on an indexer
 page", "caps the full-node scan at 20 pages whatever maxPages says". The shared reader's bounds
-(https-only, timeout, body cap, checked page shape) come from `@meddleware/access-gate-client` `^0.0.8`;
+(https-only, timeout, body cap, checked page shape) come from `@meddleware/access-gate-client` `^0.0.9`;
 its own findings are tracked in `access-gate-client-audit.md`.
 
 ### F16 — Content sealed under superseded `seal_policies` namespaces cannot be decrypted with this package
@@ -784,7 +783,7 @@ a soulbound gate, and to a transferable one only when asked to". Documented in t
 
 ### F18 — Packaging and CI details
 
-**Severity:** Info   **Disposition:** RESOLVED (0.0.16–0.0.17; the missing `engines` field is ADJUDICATED)
+**Severity:** Info   **Disposition:** RESOLVED (0.0.16–0.0.17; `engines.node >=24` added in 0.0.20)
 **Where:** `package.json`; `.github/workflows/*.yml`.
 
 - **No declarations.** No `.d.ts` and no `types` condition, unlike nft-gate-client and
@@ -817,9 +816,10 @@ a soulbound gate, and to a transferable one only when asked to". Documented in t
 - **Live suite:** weekly `live.yml` (F10).
 - **SDK floor:** `@mysten/seal` `^1.4.18`; `@mysten/sui` `^2.33.2` (the workspace floor, while the
   ADR-0001 text still names `^2.33.1`).
-- **`engines`:** still absent. ADJUDICATED: no sibling library declares it (only apps do), CI runs Node 24
-  LTS, and `engines` would only warn consumers.
-- **CLAUDE.md** dependency version: still stale, tracked in F20.
+- **`engines`:** absent at 0.0.19 (first ADJUDICATED as the siblings did not declare it). Fleet decision D41
+  (2026-10-10) sets `engines.node` to `>=24` for SDK/library packages; added in 0.0.20 (`package.json`,
+  lockfile root entry). CI already runs Node 24.
+- **CLAUDE.md** dependency version: fixed in 0.0.20 (F20).
 
 ### F19 — `PolicyRegistry.register` silently replaces an existing provider
 
@@ -844,7 +844,7 @@ provider for a registered type throws unless `replace` is passed (`registry.ts`)
 
 ### F20 — Documentation drift
 
-**Severity:** Info   **Disposition:** MITIGATED (0.0.17; two cosmetic residuals below, to be fixed with the next patch)
+**Severity:** Info   **Disposition:** RESOLVED (0.0.17; the two residuals fixed in 0.0.20, commit pending)
 
 - **`SECURITY.md` "Security model":** invariant 5 follows the nonce-width subsection, so the numbered
   list is split and renders as a new list.
@@ -865,6 +865,10 @@ provider for a registered type throws unless `replace` is passed (`registry.ts`)
 - Residual: `CLAUDE.md` still says the `@meddleware/access-gate-client` dependency is `^0.0.7`
   (`package.json` has `^0.0.8`).
 - Residual: the `SECURITY.md` source numbers its invariants 1–4, 6, 7 (it renders 1–6).
+
+**Remediation / evidence (2026-10-18):** 0.0.20 sets the `CLAUDE.md` access-gate-client range to `^0.0.9` (the
+`package.json` range after the bump) and numbers the `SECURITY.md` invariants 1-6 in the source. The audit's
+citations of invariants 1, 2 and 4 are unchanged; no test pins documentation text.
 
 ### F21 — Positive: encryption binding and pre-request ciphertext checks
 
@@ -944,7 +948,7 @@ is missing would close the gap without making the read the default.
 
 ### F25 — `gateOperators` has no hermetic test
 
-**Severity:** Low   **Disposition:** ACCEPTED-RISK (a thin wrapper over a tested reader; add the test with the next patch)
+**Severity:** Low   **Disposition:** RESOLVED (0.0.20, commit pending)
 **Where:** `src/operators.ts`; `tests/` (no reference to `gateOperators`).
 
 **Issue:**
@@ -963,6 +967,12 @@ live weekly run does not cover it.
 `payment_recipient` plus normalised `extra` without duplicates; a look-alike gate and a missing object
 throw.
 
+**Remediation / evidence (2026-10-18):** `tests/operators.test.ts` (6 tests, stubbed `core.getObject`): the
+gate's `payment_recipient` is returned (short ids normalised); `extra` is merged normalised and de-duplicated
+with the recipient first; a look-alike package, another type, an untyped object and a mistyped
+`payment_recipient` throw; a missing object propagates; and the result used as `publishers` keeps the
+operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
+
 ---
 
 ## Section A — Invariant verification matrix
@@ -980,7 +990,7 @@ throw.
 | I9 | **No key material or plaintext persisted or logged** | controller | review (DEM key discarded; no logging) | HOLDS (code-only) |
 | I10 | **Deployment IDs only from the published records; unknown networks throw** | generator + `deployments.ts` (`Object.hasOwn`) | `check:deployments`; `deployments` tests incl. prototype keys | HOLDS (F12) |
 | I11 | **Events decoded exactly; look-alikes rejected** | `parseSealedContentEvent` | sealed-content tests | HOLDS |
-| I12 | **Discovery is display-only; callers can restrict it to trusted publishers** | `listSealedContent({ publishers })`, `gateOperators` (`operators.ts`) | publisher-filter tests in `sealed-content.test.ts`; `gateOperators` itself unpinned (F25) | HOLDS — the library default is unfiltered by design (F6); seal-ui lists operator-only |
+| I12 | **Discovery is display-only; callers can restrict it to trusted publishers** | `listSealedContent({ publishers })`, `gateOperators` (`operators.ts`) | publisher-filter tests in `sealed-content.test.ts`; `tests/operators.test.ts` pins `gateOperators` (F25) | HOLDS — the library default is unfiltered by design (F6); seal-ui lists operator-only |
 | I13 | **Manifest validated before use** | `parseSealedManifest(raw, registry)` | manifest tests | HOLDS — hex `id`; with a registry, registered type and provider-narrowed `params` (F14) |
 | I14 | **ABI coupling has a drift check** | `tests/abi-table.ts` + live drift test | offline completeness test; live drift (weekly `live.yml`) | HOLDS (F10, F18) |
 | I15 | **Registry extensibility:** providers are peers; no controller change per policy | `PolicyRegistry`, `SealPolicyProvider` | registry tests | HOLDS (a replace must be explicit — F19) |
@@ -997,7 +1007,7 @@ throw.
 | --- | --- | --- | --- | --- |
 | `@mysten/seal` (peer) | `^1.4.18` (1.4.19) | encrypt and decrypt | clean | AES-256-GCM DEM default |
 | `@mysten/sui` (peer) | `^2.33.2` (2.35.0) | PTB build, events | clean | workspace floor `^2.33.2` (the ADR-0001 text still names `^2.33.1`); one copy |
-| `@meddleware/access-gate-client` | `^0.0.8` (0.0.8) | gate suggestions, gate check, operator lookup; indexer reader | provenance attested | its reader findings are tracked in `access-gate-client-audit.md` (F15) |
+| `@meddleware/access-gate-client` | `^0.0.9` (0.0.9) | gate suggestions, gate check, operator lookup; indexer reader | provenance attested | its reader findings are tracked in `access-gate-client-audit.md` (F15) |
 | `@meddleware/seal-policies-sui` (dev) | `0.0.7` exact | ID generation (build time) | provenance attested | source of every target |
 | typescript / vitest / eslint (dev) | `~6.0.3` / `~5.0.2` / `^10.11.0` | build/test | clean | |
 | Key-server committee | consumer config | decrypt — **fails closed** | n/a | B.SEAL-1 |
@@ -1025,7 +1035,7 @@ throw.
 | --- | --- | --- | --- |
 | `@mysten/sui` | — | `^2.33.2` | `^2.33.2` |
 | `@mysten/seal` | — | `^1.4.18` | `^1.4.18` |
-| `@meddleware/access-gate-client` | `^0.0.8` | — | — |
+| `@meddleware/access-gate-client` | `^0.0.9` | — | — |
 | `typescript` / `vitest` | — | `~6.0.3` / `~5.0.2` | — |
 
 ### B.2 Publish authority, capabilities & secret custody
@@ -1116,14 +1126,14 @@ the README no longer suggests it (F11), and MeddleWare's apps use t = 2 (ADR-000
 
 ## Section C — Test-coverage & hermetic/live split
 
-### C.1 Coverage grade — A- (97/97 hermetic tests, 10 files; coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
+### C.1 Coverage grade — A- (103/103 hermetic tests, 11 files, 2026-10-18; coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
 
 | Dimension | Assessment |
 | --- | --- |
 | Happy path | Encrypt (namespace binding, threshold, gate and soulbound checks), decrypt (mocked SDK), providers, builders, manifests, discovery (RPC and indexer), deployments, ciphertext description. |
 | Error path | Identity, package and namespace mismatches; approve-only violations; threshold; manifests (hex id, registry, narrowed params); non-hex; layout lengths; plain-http indexer; look-alike events; empty, zero, non-gate and transferable-gate ids; u64 overflow and past unlock; prototype-key network; undecodable indexer rows; scan cap; registry replace. |
 | Boundary | String limits (UTF-8); nonce widths; 2⁶⁴ − 1 accepted and 2⁶⁴ rejected; TTL margin with a slow signer; concurrent mints. |
-| Security-relevant | Strong on pre-request checks and the encrypt binding; publisher filtering (literal addresses). **Missing:** `gateOperators` itself (F25). |
+| Security-relevant | Strong on pre-request checks and the encrypt binding; publisher filtering (literal addresses and `gateOperators`, F25). |
 
 Coverage was not re-measured: the coverage plugin is not installed. The rows that were uncovered at the first pass
 (`controller.ts` `encrypt`, the u64 branches in `bytes.ts`) now have the tests named in F8 and F10.
@@ -1132,7 +1142,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 | Layer | Files | Gating variable | In CI? |
 | --- | --- | --- | --- |
-| Unit (offline) | 10 files, 97 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
+| Unit (offline) | 11 files, 103 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
 | Integration (live testnet: timelock round trip, ABI drift, sealed-content decode) | `tests/integration/*.integration.test.ts` (3 files, 9 tests) | `SEAL_TESTNET=1` (+ optional `GRPC_TESTNET_URL`) | weekly (`live.yml`) |
 
 ### C.2 Hermetic vs. live paths
@@ -1153,7 +1163,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 - [x] identity vectors green on both sides; approve PTBs transaction-kind-only — F21
 - [x] every provider verifies its identity layout client-side — F5
-- [x] strict type-check, lint, unit tests green; `npm audit` 0 — 97/97, tsc, eslint, audit 0 (2026-10-09)
+- [x] strict type-check, lint, unit tests green; `npm audit` 0 — 103/103, tsc, eslint, audit 0 (2026-10-18)
 - [x] identity inputs validated (gate type, soulbound, u64 range, not already unlocked) — F7, F8, F17 (the gate
   and soulbound checks run when `accessGateOriginalId` is set: F24, ADJUDICATED)
 
@@ -1166,7 +1176,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
   wrong namespace, paused gate) — F10. DEFERRED, maintainer-only: needs a funded testnet wallet holding a
   pass for a test gate; only "too early" runs live today.
 - [x] live suite in CI on a schedule — weekly `live.yml` (F10, F18)
-- [x] npm package with provenance; shared-dependency matrix aligned — 0.0.19, SLSA v1 attestation
+- [x] npm package with provenance; shared-dependency matrix aligned — 0.0.19, SLSA v1 attestation (0.0.20 pending release)
 
 ### pre-mainnet
 
@@ -1227,7 +1237,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 5. MUST keep the SessionKey cache margin relative to key creation — holds (F9).
 6. MUST let consumers restrict discovered content to trusted publishers, and MUST state that Seal does
    not authenticate content — holds (F6: `publishers`, `gateOperators`, `SECURITY.md` invariant 4); the
-   library default is unfiltered by design, and `gateOperators` has no hermetic test (F25).
+   library default is unfiltered by design, and `gateOperators` is pinned by `tests/operators.test.ts` (F25).
 7. MUST throw for any network without its own recorded deployment — holds (F12, `Object.hasOwn`).
 8. MUST document only key-server configurations consistent with ADR-0002 — holds (F11).
 
@@ -1313,7 +1323,7 @@ All four are answered; the answers are decisions, not open items.
   change. Disclosed in `SECURITY.md`; the live UpgradeCap is with the deploy key until the pre-mainnet custody
   process (`OPERATOR_TASKS.md` "Mainnet release custody").
 - **Authenticity:** decrypted content is authenticated only by the namespace, not the author (F6). The
-  publisher filter is the caller's choice, and `gateOperators` has no hermetic test (F25).
+  publisher filter is the caller's choice, and `gateOperators` is pinned by `tests/operators.test.ts` (F25).
 - **Irrecoverable or open sealing:** content bound to a wrong gate, or sealed to a transferable-pass gate,
   cannot be repaired after storage. The inputs are refused only when `accessGateOriginalId` is configured
   (F7, F17, F24); a wrapped unlock time is always refused (F8).
@@ -1360,6 +1370,19 @@ All four are answered; the answers are decisions, not open items.
     "Mainnet release custody", "Mainnet Seal key servers"); external review.
   - **No new findings.** The Seal documentation basis was not re-fetched.
 
+- 2026-10-18 — fix wave on the working tree after `v0.0.19` (`ac56f2b`); release 0.0.20, commit pending.
+  - **Changed:** `@meddleware/access-gate-client` bumped to `^0.0.9` (abort codes 15/16, `validateGatePolicy`;
+    no source change needed); `engines.node` `>=24` (fleet decision D41; F18 `engines` item now done);
+    `gateOperators` tests added (F25 RESOLVED); `CLAUDE.md` and `SECURITY.md` residuals fixed (F20 RESOLVED).
+  - **Measured:** vitest 103/103 (11 files); tsc, eslint, `npm audit --audit-level=high` (0),
+    `check:deployments`, `npm run build` and the pack contents are clean. The live suite was not run.
+  - **Dispositions (23 entries):** RESOLVED 16 (adds F20, F25); MITIGATED 2 (F10, F13); ADJUDICATED 2
+    (F16, F24); Positive 3. F13 stays MITIGATED: the construction-time warning (S6) is a product choice with
+    no single best practice, and the SDK switch is upstream.
+  - **Still not done (maintainer or mainnet):** unchanged from 2026-10-09 (live nft-gate negatives, mainnet
+    publication, key-server terms, UpgradeCap custody, external review).
+  - **No new findings.**
+
 ## Pre-save consistency checklist (this pass)
 
 - [x] Section A ↔ findings — no GAP rows remain; rows cite F6, F7, F8, F9, F10, F12, F13, F14, F19, F24, F25.
@@ -1368,5 +1391,5 @@ All four are answered; the answers are decisions, not open items.
 - [x] Closing four-part structure — present (normative, suggestions, open questions, risks).
 - [x] Section D ↔ dispositions — unticked items are mainnet-blocked or maintainer-only, and say which.
 - [x] Executive summary ↔ dispositions and ceiling (no finding open above Low).
-- [x] C.1 counts — tests measured 2026-10-09 (97/97); coverage percentages are the 2026-10-03 figures.
+- [x] C.1 counts — tests measured 2026-10-18 (103/103); coverage percentages are the 2026-10-03 figures.
 - [x] Re-verification log entry added (2026-10-03 and 2026-10-09).

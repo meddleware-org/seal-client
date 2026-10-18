@@ -3,6 +3,20 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.20] - 2026-10-18
+
+### Changed
+
+- Depends on `@meddleware/access-gate-client` ^0.0.9 (abort codes 15/16, `validateGatePolicy`); no source change needed.
+- `engines.node` is `>=24` (fleet decision D41).
+- `SECURITY.md` invariants are numbered 1-6 in the source; `CLAUDE.md` names the current access-gate-client range.
+
+### Added
+
+- Hermetic tests for `gateOperators` (`tests/operators.test.ts`): the gate's `payment_recipient` is returned,
+  extra addresses are merged normalised and de-duplicated, a look-alike or non-`Gate` object throws, and the
+  result filters `listSealedContent` to the operator's pointers.
+
 ## [0.0.19] - 2026-10-09
 
 ### Changed
