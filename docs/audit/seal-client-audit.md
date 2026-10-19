@@ -1389,6 +1389,8 @@ All four are answered; the answers are decisions, not open items.
   (`dist.attestations`); tag `v0.0.20` = `9ef93f9` (code `48fd9d6`). The Section D provenance box
   ("0.0.20 pending release") is updated with that evidence; the unticked boxes are unchanged (live nft-gate negatives,
   mainnet items, external review).
+- 2026-10-19 — dependency-bot status checked (read-only): `.github/dependabot.yml` carries the `ignore` rules and the repository has no open Dependabot pull requests (`gh pr list`, 2026-10-19). Versions, findings and gates were not re-examined in this pass.
+  - Dependabot policy encoded in .github/dependabot.yml (majors declined); open PRs merged 2026-10-19
 
 ## Pre-save consistency checklist (this pass)
 
