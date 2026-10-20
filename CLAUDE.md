@@ -55,7 +55,7 @@ one Move module 1:1.
     `@meddleware/seal-policies-sui`'s `Published.toml` and `deployments.json`. Never hand-edit it;
     CI runs `check:deployments`.
 - **Events decode from BCS.** `SealedContentPublished` is parsed from its BCS bytes with the exact
-  normalised type. The layout mirrors the Move struct. The indexer source is display-only.
+  normalised type. The layout mirrors the Move struct. The indexer source is display-only; a head page whose `polledAt` is missing, null or older than 60 s counts as unavailable and falls back to the full node (the check is in access-gate-client's `readIndexerEvents`, `^0.0.10`; sui-indexer audit F19).
 
 ## Key files
 

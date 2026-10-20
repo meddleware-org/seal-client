@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { bcs } from '@mysten/sui/bcs'
 import { Transaction } from '@mysten/sui/transactions'
 import { toBase64 } from '@mysten/sui/utils'
+import { CLOCK_SKEW_TOLERANCE_MS, STALE_AFTER_MS } from '@meddleware/access-gate-client'
 import type { CoreEventEntry } from '@meddleware/access-gate-client'
 import {
   buildPublishSealedContentTransaction,
@@ -10,6 +11,7 @@ import {
   parseSealedContentEvent,
   SEALED_CONTENT_LIMITS,
   sealedContentEventType,
+  type ListSealedContentOptions,
   type SealEventsClient,
 } from '../src/sealed-content.js'
 
@@ -126,7 +128,7 @@ describe('publisher filter (Seal gives confidentiality, not authenticity)', () =
     const rows = [rogue('Official update'), event(GATE, 'real')]
     const rpc = await listSealedContent(eventsClient([rows]), { originalId: PKG, gateId: GATE, publishers: [OPERATOR] })
     expect(rpc.pointers.map((p) => p.label)).toEqual(['real'])
-    const idx = vi.fn(async () => Response.json({ events: rows.map((e) => ({ ...e, bcs: toBase64(e.bcs as Uint8Array) })), cursor: null }))
+    const idx = vi.fn(async () => Response.json({ events: rows.map((e) => ({ ...e, bcs: toBase64(e.bcs as Uint8Array) })), cursor: null, polledAt: Date.now() }))
     const page = await listSealedContent(eventsClient([[]]), {
       originalId: PKG,
       gateId: GATE,
@@ -162,6 +164,7 @@ describe('listSealedContent', () => {
         events: [event(GATE, 'idx'), event(OTHER_GATE)].map((e) => ({ ...e, bcs: toBase64(e.bcs as Uint8Array) })),
         cursor: null,
         indexedFromCheckpoint: '5',
+        polledAt: Date.now(),
       }),
     )
     const indexed = await listSealedContent(eventsClient([[]]), {
@@ -206,7 +209,7 @@ describe('discovery robustness', () => {
   it('does the same on an indexer page', async () => {
     const good = event(GATE, 'ok')
     const rows = [{ ...good, bcs: toBase64(good.bcs as Uint8Array) }, { ...good, bcs: toBase64(new Uint8Array([9])) }]
-    const idx = vi.fn(async () => Response.json({ events: rows, cursor: null }))
+    const idx = vi.fn(async () => Response.json({ events: rows, cursor: null, polledAt: Date.now() }))
     const page = await listSealedContent(eventsClient([[]]), {
       originalId: PKG,
       gateId: GATE,
@@ -221,5 +224,87 @@ describe('discovery robustness', () => {
     const client = eventsClient(pages)
     await listSealedContent(client, { originalId: PKG, gateId: GATE, maxPages: 1000 })
     expect(client.core.listEvents).toHaveBeenCalledTimes(20)
+  })
+})
+
+describe('a stale head page counts as unavailable (sui-indexer F19, inherited from access-gate-client)', () => {
+  const NOW = 1_800_000_000_000
+  const serving = (body: Record<string, unknown>) =>
+    vi.fn(async () =>
+      Response.json({
+        events: [event(GATE, 'idx')].map((e) => ({ ...e, bcs: toBase64(e.bcs as Uint8Array) })),
+        cursor: 'c1',
+        ...body,
+      }),
+    )
+  const read = (fetchFn: ReturnType<typeof vi.fn>, extra: Partial<ListSealedContentOptions> = {}) => {
+    const client = eventsClient([[event(GATE, 'rpc')]])
+    const page = listSealedContent(client, {
+      originalId: PKG,
+      gateId: GATE,
+      indexer: { url: 'https://i.example', network: 'testnet', fetch: fetchFn as unknown as typeof fetch },
+      ...extra,
+    })
+    return { client, page }
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('uses a fresh head page', async () => {
+    const { client, page } = read(serving({ polledAt: NOW - 15_000 }))
+    expect(await page).toMatchObject({ source: 'indexer' })
+    expect(client.core.listEvents).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the full node when the head page is stale (spy proves the RPC fallback ran)', async () => {
+    expect(STALE_AFTER_MS).toBe(60_000)
+    expect((await read(serving({ polledAt: NOW - STALE_AFTER_MS })).page).source).toBe('indexer')
+    const { client, page } = read(serving({ polledAt: NOW - STALE_AFTER_MS - 1 }))
+    const p = await page
+    expect(p).toMatchObject({ source: 'rpc', indexerError: expect.stringMatching(/stale/) })
+    expect(p.pointers.map((x) => x.label)).toEqual(['rpc'])
+    expect(client.core.listEvents).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back when polledAt is null or missing (the indexer has not polled yet)', async () => {
+    for (const body of [{ polledAt: null }, {}]) {
+      const { client, page } = read(serving(body))
+      expect(await page).toMatchObject({ source: 'rpc', indexerError: expect.stringMatching(/no polledAt/) })
+      expect(client.core.listEvents).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it('tolerates a polledAt in the future within the clock-skew allowance, and falls back beyond it', async () => {
+    expect((await read(serving({ polledAt: NOW + 60_000 })).page).source).toBe('indexer')
+    expect((await read(serving({ polledAt: NOW + CLOCK_SKEW_TOLERANCE_MS })).page).source).toBe('indexer')
+    const { client, page } = read(serving({ polledAt: NOW + CLOCK_SKEW_TOLERANCE_MS + 1 }))
+    expect(await page).toMatchObject({ source: 'rpc', indexerError: expect.stringMatching(/future/) })
+    expect(client.core.listEvents).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not check staleness on an older page (history is immutable)', async () => {
+    const fetchFn = serving({})
+    const client = eventsClient([[]])
+    const page = await listSealedContent(client, {
+      originalId: PKG,
+      gateId: GATE,
+      cursor: { source: 'indexer', value: 'c0' },
+      indexer: { url: 'https://i.example', network: 'testnet', fetch: fetchFn as unknown as typeof fetch },
+    })
+    expect(page.source).toBe('indexer')
+    expect(client.core.listEvents).not.toHaveBeenCalled()
+    expect(new URL(String((fetchFn.mock.calls[0] as unknown[])[0])).searchParams.get('before')).toBe('c0')
+  })
+
+  it('honours IndexerSource.staleAfterMs', async () => {
+    const f = serving({ polledAt: NOW - 30_000 })
+    const { page } = read(f, { indexer: { url: 'https://i.example', network: 'testnet', staleAfterMs: 10_000, fetch: f as unknown as typeof fetch } })
+    expect((await page).source).toBe('rpc')
   })
 })

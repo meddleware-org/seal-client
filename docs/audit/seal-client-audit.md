@@ -26,6 +26,10 @@ scoped, not a token this package issues), no signing scripts and no image.
   `9ef93f9` (code commit `48fd9d6`; the later commit only records the hash in this audit). It carries an SLSA v1
   provenance attestation (`dist.attestations`, checked with `npm view` 2026-10-18). 0.0.19 (tag `v0.0.19` =
   `3527c58`, 2026-10-09) was the version of the 2026-10-09 pass; the Dependabot group bump `b4a42ea` shipped with 0.0.20.
+- Working tree 2026-10-20: version **0.0.21** (local commit, not tagged or published) raises the
+  `@meddleware/access-gate-client` dependency to `^0.0.10` and pins the stale-head-page fallback (F26). Its lockfile
+  keeps the 0.0.9 entry until access-gate-client 0.0.10 is published and `npm install` is run (the tests ran against a
+  local link of the 0.0.10 working tree).
 - It is consumed at `^0.0.20` (bumped 2026-10-18, verified in `repos/*/package.json`) by seal-ui, the docs and
   dev sites and sui-indexer; it was `^0.0.19` for seal-ui and docs on 2026-10-09.
 - It targets `seal_policies` on testnet only (no mainnet publication exists): `0x0c8f7349…` (republished
@@ -66,7 +70,7 @@ renumber the new findings when relocating it, and leave a pointer stub at the co
 **Runtime targets:** browsers (via Vite in seal-ui and the dashboard) and Node (integration tests).
 `engines.node` is `>=24` (fleet decision D41; F18).
 **Peer dependencies:** `@mysten/seal` `^1.4.18` and `@mysten/sui` `^2.33.2` (both also
-devDependencies). The runtime dependency is `@meddleware/access-gate-client` `^0.0.9` (0.0.20; `^0.0.8` at 0.0.19).
+devDependencies). The runtime dependency is `@meddleware/access-gate-client` `^0.0.10` (0.0.21; `^0.0.9` at 0.0.20, `^0.0.8` at 0.0.19).
 
 **Sui SDK:** `@mysten/sui` `^2.33.2` (installed 2.35.0, deduped). **Transport:** gRPC core API
 through structural client types, plus an optional HTTPS read-indexer (display only). No JSON-RPC.
@@ -154,7 +158,7 @@ unsupported; mainnet key servers Overclock / NodeInfra / H2O Open mode 2-of-3, E
 - **Mitigated:** F10 (hermetic `encrypt` tests and the weekly live run; the live nft-gate negatives remain
   and are maintainer-only), F13 (`verifiesKeyServers`; the SDK switch itself is unchanged).
 - **Adjudicated:** F16 (legacy namespaces unsupported), F24 (the gate and soulbound checks are opt-in).
-- **Since resolved (0.0.20, 2026-10-18):** F25 (`gateOperators` tests added) and F20 (the two doc residuals fixed).
+- **Since resolved (0.0.20, 2026-10-18):** F25 (`gateOperators` tests added) and F20 (the two doc residuals fixed). **0.0.21 (2026-10-20):** F26 (a stale indexer head page falls back to the full node).
 
 What the first pass found, for the record:
 
@@ -184,7 +188,7 @@ What the first pass found, for the record:
 3. **Info (F13–F20):**
    - `verifyKeyServers` is all-or-nothing;
    - manifest `id` and `params` are only shape-checked;
-   - indexer and event robustness is inherited from access-gate-client;
+   - indexer and event robustness is inherited from access-gate-client (stale head pages fall back: F26);
    - content under superseded namespaces cannot be decrypted;
    - client-side options for the frozen-pass issue (seal-policies-sui F16);
    - packaging and CI details;
@@ -977,6 +981,37 @@ operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
 
 ---
 
+### F26 — A stuck indexer that still answers `200` shows frozen discovery (stale head pages were used)
+
+**Severity:** Low   **Disposition:** RESOLVED (0.0.21, 2026-10-20, commit pending; the check is access-gate-client F25 / sui-indexer F19)
+**Where:** `src/sealed-content.ts::listFromIndexer` (calls the shared `readIndexerEvents`).
+
+**Issue:**
+
+- sui-indexer stamps head pages with `polledAt`. `listSealedContent` fell back to the full node on errors and
+  timeouts only, so an indexer with a stuck ingest kept answering `200` and seal-ui listed frozen pointers
+  until it recovered (F15's reader fixes did not cover freshness).
+
+**Impact:** stale discovery (new pointers missing) for as long as an ingest failure lasts. Display only: decryption
+is authorised on-chain and the pointers stay unauthenticated either way (F6).
+
+**Remediation / evidence (2026-10-20, 0.0.21, commit pending):**
+
+- No new logic here: the shared reader treats a head page (no `before`) whose `polledAt` is missing, `null`,
+  not an epoch-ms integer or older than `STALE_AFTER_MS` (60 s = 4 poll intervals) by the client's `Date.now()`
+  as unavailable, so the existing first-page fallback runs and `indexerError` says `indexer is stale…`. A
+  `polledAt` up to `CLOCK_SKEW_TOLERANCE_MS` (5 min) in the future counts as fresh. Pages with a cursor are immutable
+  history and not checked. `IndexerSource.staleAfterMs` overrides the limit. The dependency is raised to
+  `@meddleware/access-gate-client` `^0.0.10`, which contains the check (access-gate-client audit F25).
+- Tests (`tests/sealed-content.test.ts`, *a stale head page counts as unavailable (sui-indexer F19, inherited from
+  access-gate-client)*, faked clock): fresh page used; exactly 60 s used and 60 s + 1 ms falls back (the
+  `listEvents` spy proves the full-node fallback ran and the pointers come from it); `null` and missing `polledAt`
+  fall back; +60 s and +5 min used, +5 min + 1 ms falls back; an older page ignores staleness; `staleAfterMs`
+  override. The existing indexer fixtures carry a fresh `polledAt`.
+- Found while closing sui-indexer F19.
+
+---
+
 ## Section A — Invariant verification matrix
 
 | # | Invariant | Enforced / asserted at | Proven by | Status |
@@ -1009,12 +1044,12 @@ operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
 | --- | --- | --- | --- | --- |
 | `@mysten/seal` (peer) | `^1.4.18` (1.4.19) | encrypt and decrypt | clean | AES-256-GCM DEM default |
 | `@mysten/sui` (peer) | `^2.33.2` (2.35.0) | PTB build, events | clean | workspace floor `^2.33.2` (the ADR-0001 text still names `^2.33.1`); one copy |
-| `@meddleware/access-gate-client` | `^0.0.9` (0.0.9) | gate suggestions, gate check, operator lookup; indexer reader | provenance attested | its reader findings are tracked in `access-gate-client-audit.md` (F15) |
+| `@meddleware/access-gate-client` | `^0.0.10` (0.0.10 working tree; 0.0.9 released) | gate suggestions, gate check, operator lookup; indexer reader | provenance attested | its reader findings are tracked in `access-gate-client-audit.md` (F15) |
 | `@meddleware/seal-policies-sui` (dev) | `0.0.7` exact | ID generation (build time) | provenance attested | source of every target |
 | typescript / vitest / eslint (dev) | `~6.0.3` / `~5.0.2` / `^10.11.0` | build/test | clean | |
 | Key-server committee | consumer config | decrypt — **fails closed** | n/a | B.SEAL-1 |
 | Sui full node | consumer client | PTB object resolution; event reads — fails closed (throws) | n/a | |
-| Read-indexer (optional) | consumer URL | discovery — first page falls back; cursor pages fail | n/a | display only |
+| Read-indexer (optional) | consumer URL | discovery — first page falls back (also when the head page is stale: `polledAt` missing, null or older than 60 s, F26); cursor pages fail | n/a | display only |
 
 **SEAL lens B.1 rows:**
 
@@ -1128,7 +1163,7 @@ the README no longer suggests it (F11), and MeddleWare's apps use t = 2 (ADR-000
 
 ## Section C — Test-coverage & hermetic/live split
 
-### C.1 Coverage grade — A- (103/103 hermetic tests, 11 files, 2026-10-18; coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
+### C.1 Coverage grade — A- (109/109 hermetic tests, 11 files, 2026-10-20 (103 on 2026-10-18); coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
 
 | Dimension | Assessment |
 | --- | --- |
@@ -1144,7 +1179,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 | Layer | Files | Gating variable | In CI? |
 | --- | --- | --- | --- |
-| Unit (offline) | 11 files, 103 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
+| Unit (offline) | 11 files, 109 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
 | Integration (live testnet: timelock round trip, ABI drift, sealed-content decode) | `tests/integration/*.integration.test.ts` (3 files, 9 tests) | `SEAL_TESTNET=1` (+ optional `GRPC_TESTNET_URL`) | weekly (`live.yml`) |
 
 ### C.2 Hermetic vs. live paths
@@ -1165,7 +1200,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 - [x] identity vectors green on both sides; approve PTBs transaction-kind-only — F21
 - [x] every provider verifies its identity layout client-side — F5
-- [x] strict type-check, lint, unit tests green; `npm audit` 0 — 103/103, tsc, eslint, audit 0 (2026-10-18)
+- [x] strict type-check, lint, unit tests green; `npm audit` 0 — 109/109, tsc, eslint, audit 0 (2026-10-18: 103/103; 2026-10-20: 109/109, `npm audit --audit-level=high` 0)
 - [x] identity inputs validated (gate type, soulbound, u64 range, not already unlocked) — F7, F8, F17 (the gate
   and soulbound checks run when `accessGateOriginalId` is set: F24, ADJUDICATED)
 
@@ -1191,6 +1226,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 - [ ] policy-package UpgradeCap custody executed (seal-policies-sui OQ3) — disclosed in `SECURITY.md`; the
   new UpgradeCap is with the deploy key; multisig transfer and burn are the pre-mainnet process
   (`OPERATOR_TASKS.md` "Mainnet release custody")
+- [x] a stale indexer head page falls back to the full node (sui-indexer F19, the discovery half) — F26, 0.0.21 (needs access-gate-client `^0.0.10`)
 - [x] discovery can be authenticated by publisher — F6 (`publishers`, `gateOperators`; seal-ui is operator-only)
 - [x] SessionKey margin and persistence reviewed — F9 (memory-only; margin from key creation)
 - [ ] external review — maintainer item
@@ -1329,6 +1365,8 @@ All four are answered; the answers are decisions, not open items.
 - **Irrecoverable or open sealing:** content bound to a wrong gate, or sealed to a transferable-pass gate,
   cannot be repaired after storage. The inputs are refused only when `accessGateOriginalId` is configured
   (F7, F17, F24); a wrapped unlock time is always refused (F8).
+- **Stale discovery:** a stuck indexer is detected from `polledAt` (60 s) and the full node answers (F26). A client clock
+  more than 60 s ahead makes every head page look stale, which disables the indexer for that client only.
 - **Live nft-gate coverage:** the decrypt negatives against a real pass are unproven live (F10).
 - **Shared-SDK fragility:** a single `@mysten/seal` / `@mysten/sui` copy in hosts, held by peer
   dependencies and the dashboard pin.
@@ -1391,6 +1429,15 @@ All four are answered; the answers are decisions, not open items.
   mainnet items, external review).
 - 2026-10-19 — dependency-bot status checked (read-only): `.github/dependabot.yml` carries the `ignore` rules and the repository has no open Dependabot pull requests (`gh pr list`, 2026-10-19). Versions, findings and gates were not re-examined in this pass.
   - Dependabot policy encoded in .github/dependabot.yml (majors declined); open PRs merged 2026-10-19
+- 2026-10-20 — sui-indexer F19 closed on the discovery side: version 0.0.21 (local commit, commit pending; not tagged or
+  published), `@meddleware/access-gate-client` `^0.0.10`.
+  - **F26 RESOLVED:** `listSealedContent` falls back to the full node when the indexer's head page is stale (inherited from
+    the shared reader, access-gate-client F25); six hermetic tests added; the indexer fixtures carry `polledAt`.
+  - **Measured:** vitest 109/109 (11 files) against a local link of the access-gate-client 0.0.10 working tree; tsc,
+    eslint, build and `check:deployments` clean; `npm audit --audit-level=high` 0. The lockfile resolution of `^0.0.10` is for the
+    release (access-gate-client 0.0.10 must be published first, then `npm install` here).
+  - **Dispositions (24 entries):** RESOLVED 17 (adds F26); MITIGATED 2 (F10, F13); ADJUDICATED 2 (F16, F24);
+    Positive 3.
 
 ## Pre-save consistency checklist (this pass)
 
@@ -1400,5 +1447,5 @@ All four are answered; the answers are decisions, not open items.
 - [x] Closing four-part structure — present (normative, suggestions, open questions, risks).
 - [x] Section D ↔ dispositions — unticked items are mainnet-blocked or maintainer-only, and say which.
 - [x] Executive summary ↔ dispositions and ceiling (no finding open above Low).
-- [x] C.1 counts — tests measured 2026-10-18 (103/103); coverage percentages are the 2026-10-03 figures.
+- [x] C.1 counts — tests measured 2026-10-20 (109/109); coverage percentages are the 2026-10-03 figures.
 - [x] Re-verification log entry added (2026-10-03 and 2026-10-09).

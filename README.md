@@ -151,7 +151,12 @@ page.pointers // newest first; page.cursor continues
   const page = await listSealedContent(suiClient, { originalId, gateId, publishers })
   ```
 - The optional indexer is display-only. A first page falls back to the full node if the indexer
-  fails.
+  fails, times out or is **stale**: a head page whose `polledAt` (epoch ms of the indexer's last successful
+  poll) is missing, `null` or more than 60 s old by this machine's clock counts as unavailable, and
+  `indexerError` says why. A `polledAt` up to 5 min in the future still counts as fresh (clock skew), and
+  older pages (with a cursor) are immutable history and are not checked. Override the 60 s per call with
+  `indexer.staleAfterMs`. The check lives in access-gate-client's `readIndexerEvents` (`STALE_AFTER_MS`,
+  `CLOCK_SKEW_TOLERANCE_MS`), so this needs `@meddleware/access-gate-client` `^0.0.10`.
 
 ## Adding a policy type
 

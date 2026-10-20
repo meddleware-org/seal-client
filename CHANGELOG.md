@@ -3,6 +3,21 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.21] - 2026-10-20
+
+### Changed
+
+- Depends on `@meddleware/access-gate-client` ^0.0.10: `listSealedContent` now treats a stale indexer head page
+  (`polledAt` missing, `null` or older than 60 s; up to 5 min in the future is tolerated) as unavailable and
+  falls back to the full node with `indexerError` set (sui-indexer audit F19). Older pages are not checked.
+  `IndexerSource.staleAfterMs` overrides the limit. No source change here; the check lives in the shared
+  `readIndexerEvents`.
+
+### Added
+
+- Hermetic tests for the stale-head-page fallback in `listSealedContent` (fresh, stale, null, clock skew, older page,
+  override); the existing indexer fixtures carry a fresh `polledAt`.
+
 ## [0.0.20] - 2026-10-18
 
 ### Changed
