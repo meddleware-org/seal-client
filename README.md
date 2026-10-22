@@ -201,6 +201,24 @@ npm run check:deployments   # src/deployments.ts matches @meddleware/seal-polici
 npm run test:integration    # live testnet (key servers + full node, ABI drift)
 ```
 
+### Live nft-gate round trip with negatives (maintainer-run, spends testnet SUI)
+
+`tests/integration/nft-gate.integration.test.ts` seals to a gate you own, buys passes and decrypts through the public testnet Seal
+key servers, then checks each refusal: a pass of another gate, an exhausted pass, a paused gate, a time-lock that has not opened, an
+address that does not own the pass, and a frozen transferable pass (which opens the content to anyone, seal-policies-sui F16). It
+skips unless a funded testnet key is supplied, so the weekly CI job never runs it (a funded key must not be a CI secret):
+
+```sh
+SEAL_TESTNET=1 SEAL_LIVE_KEY_FILE=/path/to/one-suiprivkey-testnet-key \
+  npx vitest run --config vitest.integration.config.ts tests/integration/nft-gate.integration.test.ts
+```
+
+A run creates its own scratch gates on the live `access_gate` and costs about 0.05 SUI. A refusal reaches the caller as `NoAccessError`
+("User does not have access to one or more of the requested keys") or, for a pass the requester does not own, `InvalidParameterError`: **the key
+server's answer does not carry the Move abort**, so `classifyPolicyAbort` cannot read it from the error of `decrypt`. To tell a paused gate from a
+used-up pass, simulate the approve PTB as the requester (`client.core.simulateTransaction`) and classify the result; the test does exactly that.
+A `SealController` keeps the keys it has fetched, so a pause or an exhausted pass takes effect only for a controller created afterwards.
+
 ## License
 
 BSD Zero Clause License (`0BSD`). See [LICENSE](LICENSE).
