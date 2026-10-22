@@ -552,7 +552,7 @@ share one mint and one wallet prompt". `SECURITY.md` invariant 2 now holds as wr
 
 ### F10 — `encrypt` is untested hermetically; the live suite cannot detect a namespace regression and lacks nft-gate and negative cases
 
-**Severity:** Low   **Disposition:** RESOLVED (hermetic `encrypt` tests 0.0.16; weekly live run 0.0.17; the funded nft-gate round trip with negatives ran on 2026-10-22 and is a maintainer-run test, `tests/integration/nft-gate.integration.test.ts`, commit pending)
+**Severity:** Low   **Disposition:** RESOLVED (hermetic `encrypt` tests 0.0.16; weekly live run 0.0.17; the funded nft-gate round trip with negatives ran on 2026-10-22 and is a maintainer-run test, `tests/integration/nft-gate.integration.test.ts`, commit 10b6bb0)
 **Where:**
 
 - `src/controller.ts:100-110` (0% covered);
@@ -1020,7 +1020,7 @@ is authorised on-chain and the pointers stay unauthenticated either way (F6).
 
 ### F27 — A key server's refusal carries no Move abort, so `classifyPolicyAbort` cannot read a failed `decrypt` (found by the 2026-10-22 live run)
 
-**Severity:** Info   **Disposition:** RESOLVED (0.0.23, commit pending: `SealController.explainRefusal` / `explainApproveRefusal`, `src/refusal.ts`; `tests/refusal.test.ts`, 61 tests; asserted live by `tests/integration/nft-gate.integration.test.ts`, 8/8 on 2026-10-22)
+**Severity:** Info   **Disposition:** RESOLVED (0.0.23, commit 10b6bb0: `SealController.explainRefusal` / `explainApproveRefusal`, `src/refusal.ts`; `tests/refusal.test.ts`, 61 tests; asserted live by `tests/integration/nft-gate.integration.test.ts`, 8/8 on 2026-10-22)
 **Where:** `src/controller.ts::decrypt` (the error of `SealClient.decrypt` is passed through); `src/aborts.ts`; the fix is `src/refusal.ts` and `SealController.explainRefusal`.
 
 **Issue:** the abort map (S7, 0.0.22) was built on the assumption that the abort text might reach the caller; "not verified live" was recorded. The public
@@ -1037,7 +1037,7 @@ names it: observed 2026-10-22 for `E_WRONG_GATE` (2), `E_EXHAUSTED` (3), `E_GATE
 `migrate`, `config::E_WRONG_VERSION` (1). A non-owner makes the simulation itself throw ("Transaction was not signed by the correct sender: Object … is owned by account address …").
 The README states this and `tests/integration/nft-gate.integration.test.ts` does it.
 
-**Fix (0.0.23, commit pending; OQ5 decided (b) on 2026-10-22):** `SealController.explainRefusal(type, params, id, { address })` builds the approve PTB through the provider (and holds it to `assertApproveOnly`), simulates it as `address` over the controller's client (`core.simulateTransaction`: read-only, no signing, no funds, one RPC, no SessionKey) and returns `{ kind: 'allowed' | 'refused' | 'unknown', reason?, module?, code?, message, advice?, cause?, raw? }`. `refused` carries the Move constant's name as `reason` (`E_GATE_PAUSED`, `E_EXHAUSTED`, `E_WRONG_GATE`, `E_TOO_EARLY`, `E_WRONG_VERSION`, …; `classifyPolicyAbort` with `[originalId, publishedAt]`, so another package's module of the same name is not named) and UI text in `message`; the non-owner case, where the node refuses to simulate at all, is `refused` with `reason: 'NOT_OWNER'`. `allowed` says the policy approves this address (the key servers were the problem). `unknown` is a network error (the error is `cause`), a failure that is not a Move abort, a provider that fails to build, or a result in a shape not read. It never throws on a refusal; only an unregistered policy type throws (as `decrypt`). `decrypt` does not call it (no extra RPC on every failure, its thrown types are unchanged); the README shows the use after a `NoAccessError` / `InvalidParameterError`. `explainApproveRefusal(client, tx, { sender, policyPackageIds })` is the same for a transaction built elsewhere. Pinned by `tests/refusal.test.ts` (61 tests: every row of `POLICY_ABORTS` structured and from the message alone, small code 1 told apart across the four modules, allowed, foreign package, unknown code, code outside the safe integer range, NOT_OWNER including on the `cause`, network and non-Error rejections, non-abort failures, nine malformed results, the controller method with build failures) and, live, by the maintainer-run test, which now asserts `explainRefusal` for the positive and each negative (E_WRONG_GATE, E_ID_NOT_NAMESPACED, E_EXHAUSTED, E_GATE_PAUSED, E_TOO_EARLY, NOT_OWNER): 8/8 against the testnet committee on 2026-10-22.
+**Fix (0.0.23, commit 10b6bb0; OQ5 decided (b) on 2026-10-22):** `SealController.explainRefusal(type, params, id, { address })` builds the approve PTB through the provider (and holds it to `assertApproveOnly`), simulates it as `address` over the controller's client (`core.simulateTransaction`: read-only, no signing, no funds, one RPC, no SessionKey) and returns `{ kind: 'allowed' | 'refused' | 'unknown', reason?, module?, code?, message, advice?, cause?, raw? }`. `refused` carries the Move constant's name as `reason` (`E_GATE_PAUSED`, `E_EXHAUSTED`, `E_WRONG_GATE`, `E_TOO_EARLY`, `E_WRONG_VERSION`, …; `classifyPolicyAbort` with `[originalId, publishedAt]`, so another package's module of the same name is not named) and UI text in `message`; the non-owner case, where the node refuses to simulate at all, is `refused` with `reason: 'NOT_OWNER'`. `allowed` says the policy approves this address (the key servers were the problem). `unknown` is a network error (the error is `cause`), a failure that is not a Move abort, a provider that fails to build, or a result in a shape not read. It never throws on a refusal; only an unregistered policy type throws (as `decrypt`). `decrypt` does not call it (no extra RPC on every failure, its thrown types are unchanged); the README shows the use after a `NoAccessError` / `InvalidParameterError`. `explainApproveRefusal(client, tx, { sender, policyPackageIds })` is the same for a transaction built elsewhere. Pinned by `tests/refusal.test.ts` (61 tests: every row of `POLICY_ABORTS` structured and from the message alone, small code 1 told apart across the four modules, allowed, foreign package, unknown code, code outside the safe integer range, NOT_OWNER including on the `cause`, network and non-Error rejections, non-abort failures, nine malformed results, the controller method with build failures) and, live, by the maintainer-run test, which now asserts `explainRefusal` for the positive and each negative (E_WRONG_GATE, E_ID_NOT_NAMESPACED, E_EXHAUSTED, E_GATE_PAUSED, E_TOO_EARLY, NOT_OWNER): 8/8 against the testnet committee on 2026-10-22.
 
 ---
 
@@ -1371,12 +1371,12 @@ Status at 2026-10-09 in brackets.
   mixed configuration (F11, F13). [Not added; `verifiesKeyServers` exposes the setting.]
 
 - **S7** SHOULD map the `seal_policies` abort codes by `(module, code)` so a client can tell a paused gate from a missing pass
-  and a retired package version from a bad identity (seal-policies-sui dev-guide rule 5, OQ5). [Done in 0.0.22, commit pending:
+  and a retired package version from a bad identity (seal-policies-sui dev-guide rule 5, OQ5). [Done in 0.0.22, commit 10b6bb0:
   `src/aborts.ts` (`POLICY_ABORTS`, `describePolicyAbort`, `parseMoveAbort`, `classifyPolicyAbort`), `nft_gate` 4 `E_GATE_PAUSED` and `config` 1
   `E_WRONG_VERSION` plus the other codes of the four modules; `tests/aborts.test.ts` (8 tests, and 4 that compare the table with the Move
   constants when seal-policies-sui is next to this repo). Verified live 2026-10-22 (F27): a key server's refusal carries no abort text (`NoAccessError` / `InvalidParameterError`), so the map applies to the approve PTB simulated by the client, not to the error of `decrypt`; OQ5.]
 
-- **S8** MAY let a client ask why a decrypt was refused (F27, OQ5). [Done in 0.0.23, commit pending: `SealController.explainRefusal`
+- **S8** MAY let a client ask why a decrypt was refused (F27, OQ5). [Done in 0.0.23, commit 10b6bb0: `SealController.explainRefusal`
   and `explainApproveRefusal` (`src/refusal.ts`); opt-in, one read-only simulation, `decrypt` unchanged.]
 
 ## Open questions
