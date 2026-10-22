@@ -70,6 +70,7 @@ one Move module 1:1.
 | `src/sealed-content.ts` | Discovery pointers: publish builders, `listSealedContent` (full node / indexer), BCS event parser. |
 | `src/deployments.ts` | GENERATED `seal_policies` ids per network (subpath `./deployments`). |
 | `src/aborts.ts` | `seal_policies` abort codes keyed by `(module, code)` (`POLICY_ABORTS`, `classifyPolicyAbort`): the codes overlap between modules, so never match on the code alone. `tests/aborts.test.ts` compares the table with the Move constants when seal-policies-sui is checked out beside this repo. |
+| `src/refusal.ts` | `explainApproveRefusal` / `SealController.explainRefusal`: simulates the approve PTB as the requester (read-only `simulateTransaction`) and returns `{ kind: 'allowed' \| 'refused' \| 'unknown', reason?, module?, code?, message, … }`. A key server's refusal carries no Move abort, so apps call this after a `NoAccessError`; `decrypt` never calls it (extra RPC). It does not throw on a refusal. |
 | `src/bytes.ts` | Hex/id/u64-BE/nonce/concat helpers — the single source of identity-byte truth. |
 | `src/index.ts` | Public surface (types, registry, controller, providers, sealed-content helpers). |
 

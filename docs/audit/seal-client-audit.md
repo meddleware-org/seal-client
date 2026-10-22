@@ -26,6 +26,7 @@ scoped, not a token this package issues), no signing scripts and no image.
   `9ef93f9` (code commit `48fd9d6`; the later commit only records the hash in this audit). It carries an SLSA v1
   provenance attestation (`dist.attestations`, checked with `npm view` 2026-10-18). 0.0.19 (tag `v0.0.19` =
   `3527c58`, 2026-10-09) was the version of the 2026-10-09 pass; the Dependabot group bump `b4a42ea` shipped with 0.0.20.
+- Working tree 2026-10-22: version **0.0.23** (local commit, not tagged or published) adds `SealController.explainRefusal` (F27, OQ5).
 - Working tree 2026-10-22: version **0.0.22** (local commit, not tagged or published) adds the `seal_policies` abort
   map (S7 below; seal-policies-sui OQ5). 0.0.21 was released in between if it has been tagged by then; this line records the working tree.
 - Working tree 2026-10-20: version **0.0.21** (local commit, not tagged or published) raises the
@@ -160,7 +161,7 @@ unsupported; mainnet key servers Overclock / NodeInfra / H2O Open mode 2-of-3, E
 - **Mitigated:** F10 (hermetic `encrypt` tests and the weekly live run; the live nft-gate negatives remain
   and are maintainer-only; **since resolved 2026-10-22**), F13 (`verifiesKeyServers`; the SDK switch itself is unchanged).
 - **Adjudicated:** F16 (legacy namespaces unsupported), F24 (the gate and soulbound checks are opt-in).
-- **Since resolved (0.0.20, 2026-10-18):** F25 (`gateOperators` tests added) and F20 (the two doc residuals fixed). **0.0.21 (2026-10-20):** F26 (a stale indexer head page falls back to the full node).
+- **Since resolved (0.0.20, 2026-10-18):** F25 (`gateOperators` tests added) and F20 (the two doc residuals fixed). **0.0.21 (2026-10-20):** F26 (a stale indexer head page falls back to the full node). **0.0.23 (2026-10-22, local):** F27 (`SealController.explainRefusal` names the policy abort a key server's generic refusal hides; OQ5 decided).
 
 What the first pass found, for the record:
 
@@ -1019,8 +1020,8 @@ is authorised on-chain and the pointers stay unauthenticated either way (F6).
 
 ### F27 — A key server's refusal carries no Move abort, so `classifyPolicyAbort` cannot read a failed `decrypt` (found by the 2026-10-22 live run)
 
-**Severity:** Info   **Disposition:** MITIGATED (documented in the README and pinned by the maintainer-run live test; a client-side helper is OQ5)
-**Where:** `src/controller.ts::decrypt` (the error of `SealClient.decrypt` is passed through); `src/aborts.ts`.
+**Severity:** Info   **Disposition:** RESOLVED (0.0.23, commit pending: `SealController.explainRefusal` / `explainApproveRefusal`, `src/refusal.ts`; `tests/refusal.test.ts`, 61 tests; asserted live by `tests/integration/nft-gate.integration.test.ts`, 8/8 on 2026-10-22)
+**Where:** `src/controller.ts::decrypt` (the error of `SealClient.decrypt` is passed through); `src/aborts.ts`; the fix is `src/refusal.ts` and `SealController.explainRefusal`.
 
 **Issue:** the abort map (S7, 0.0.22) was built on the assumption that the abort text might reach the caller; "not verified live" was recorded. The public
 testnet committee answers a refused dry run with `NoAccessError` ("User does not have access to one or more of the requested keys") for every policy
@@ -1034,7 +1035,9 @@ exhausted pass reaches only controllers created afterwards (a revocation cannot 
 **Remediation / evidence:** the same approve PTB simulated as the requester (`client.core.simulateTransaction`) aborts with the real code and `classifyPolicyAbort`
 names it: observed 2026-10-22 for `E_WRONG_GATE` (2), `E_EXHAUSTED` (3), `E_GATE_PAUSED` (4), `E_ID_NOT_NAMESPACED` (1), `E_TOO_EARLY` (2) and, on a scratch package after
 `migrate`, `config::E_WRONG_VERSION` (1). A non-owner makes the simulation itself throw ("Transaction was not signed by the correct sender: Object … is owned by account address …").
-The README states this and `tests/integration/nft-gate.integration.test.ts` does it. A library helper that runs the simulation after a `NoAccessError` is OQ5.
+The README states this and `tests/integration/nft-gate.integration.test.ts` does it.
+
+**Fix (0.0.23, commit pending; OQ5 decided (b) on 2026-10-22):** `SealController.explainRefusal(type, params, id, { address })` builds the approve PTB through the provider (and holds it to `assertApproveOnly`), simulates it as `address` over the controller's client (`core.simulateTransaction`: read-only, no signing, no funds, one RPC, no SessionKey) and returns `{ kind: 'allowed' | 'refused' | 'unknown', reason?, module?, code?, message, advice?, cause?, raw? }`. `refused` carries the Move constant's name as `reason` (`E_GATE_PAUSED`, `E_EXHAUSTED`, `E_WRONG_GATE`, `E_TOO_EARLY`, `E_WRONG_VERSION`, …; `classifyPolicyAbort` with `[originalId, publishedAt]`, so another package's module of the same name is not named) and UI text in `message`; the non-owner case, where the node refuses to simulate at all, is `refused` with `reason: 'NOT_OWNER'`. `allowed` says the policy approves this address (the key servers were the problem). `unknown` is a network error (the error is `cause`), a failure that is not a Move abort, a provider that fails to build, or a result in a shape not read. It never throws on a refusal; only an unregistered policy type throws (as `decrypt`). `decrypt` does not call it (no extra RPC on every failure, its thrown types are unchanged); the README shows the use after a `NoAccessError` / `InvalidParameterError`. `explainApproveRefusal(client, tx, { sender, policyPackageIds })` is the same for a transaction built elsewhere. Pinned by `tests/refusal.test.ts` (61 tests: every row of `POLICY_ABORTS` structured and from the message alone, small code 1 told apart across the four modules, allowed, foreign package, unknown code, code outside the safe integer range, NOT_OWNER including on the `cause`, network and non-Error rejections, non-abort failures, nine malformed results, the controller method with build failures) and, live, by the maintainer-run test, which now asserts `explainRefusal` for the positive and each negative (E_WRONG_GATE, E_ID_NOT_NAMESPACED, E_EXHAUSTED, E_GATE_PAUSED, E_TOO_EARLY, NOT_OWNER): 8/8 against the testnet committee on 2026-10-22.
 
 ---
 
@@ -1189,7 +1192,7 @@ the README no longer suggests it (F11), and MeddleWare's apps use t = 2 (ADR-000
 
 ## Section C — Test-coverage & hermetic/live split
 
-### C.1 Coverage grade — A- (121/121 hermetic tests, 12 files, 2026-10-22 (109 on 2026-10-20, 103 on 2026-10-18); coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
+### C.1 Coverage grade — A- (182/182 hermetic tests, 13 files, 2026-10-22 (121 before `explainRefusal`, 109 on 2026-10-20, 103 on 2026-10-18); coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
 
 | Dimension | Assessment |
 | --- | --- |
@@ -1205,7 +1208,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 | Layer | Files | Gating variable | In CI? |
 | --- | --- | --- | --- |
-| Unit (offline) | 11 files, 109 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
+| Unit (offline) | 13 files, 182 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
 | Integration (live testnet: timelock round trip, ABI drift, sealed-content decode) | `tests/integration/*.integration.test.ts` (4 files, 17 tests; the 8 of `nft-gate.integration.test.ts` skip without `SEAL_LIVE_KEY_FILE`) | `SEAL_TESTNET=1` (+ optional `GRPC_TESTNET_URL`); the nft-gate file also a funded key | weekly (`live.yml`) for the 9 keyless tests; the nft-gate file is maintainer-run |
 
 ### C.2 Hermetic vs. live paths
@@ -1213,7 +1216,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 | Path | Hermetic? | Deferred to | Tracking |
 | --- | --- | --- | --- |
 | Key-server committee behaviour, share consistency, full-node skew | no (live-only, per the SEAL lens) | integration suite (time-lock), weekly | F10 |
-| nft-gate decrypt with a real pass (and negatives) | no | `tests/integration/nft-gate.integration.test.ts` — maintainer-run with a funded key (`SEAL_LIVE_KEY_FILE`), run twice on 2026-10-22; not in the weekly CI job (a funded key is not a CI secret) | F10, F27 |
+| nft-gate decrypt with a real pass (and negatives) | no | `tests/integration/nft-gate.integration.test.ts` — maintainer-run with a funded key (`SEAL_LIVE_KEY_FILE`), run on 2026-10-22 (with the `explainRefusal` assertions: 8/8); not in the weekly CI job (a funded key is not a CI secret) | F10, F27 |
 | `encrypt` namespace binding | yes | `tests/controller.test.ts` | F10 |
 | ABI of the published package | arity table | live drift, weekly | F10, F18 |
 | `SealedContentPublished` layout vs chain | self-encoded | live decode, weekly | — |
@@ -1239,6 +1242,8 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
   wrong namespace, paused gate) — F10: `tests/integration/nft-gate.integration.test.ts`, 8 tests, passed twice on 2026-10-22 against the public
   testnet committee (maintainer-run; repeat before each release of this package or of seal-policies-sui). "Wrong namespace" is refused by the controller
   before any request and shown to abort in the dry run; a key server is not asked.
+- [x] a client can tell a user why a decrypt was refused (paused, used up, wrong gate, too early, retired version, not the owner) — F27, 0.0.23:
+  `SealController.explainRefusal`; unit-pinned for every abort of the table and asserted live (8/8, 2026-10-22)
 - [x] live suite in CI on a schedule — weekly `live.yml` (F10, F18)
 - [x] npm package with provenance; shared-dependency matrix aligned — 0.0.19 and 0.0.20, SLSA v1 attestations (0.0.20 released 2026-10-18, `dist.attestations` checked)
 
@@ -1371,9 +1376,12 @@ Status at 2026-10-09 in brackets.
   `E_WRONG_VERSION` plus the other codes of the four modules; `tests/aborts.test.ts` (8 tests, and 4 that compare the table with the Move
   constants when seal-policies-sui is next to this repo). Verified live 2026-10-22 (F27): a key server's refusal carries no abort text (`NoAccessError` / `InvalidParameterError`), so the map applies to the approve PTB simulated by the client, not to the error of `decrypt`; OQ5.]
 
+- **S8** MAY let a client ask why a decrypt was refused (F27, OQ5). [Done in 0.0.23, commit pending: `SealController.explainRefusal`
+  and `explainApproveRefusal` (`src/refusal.ts`); opt-in, one read-only simulation, `decrypt` unchanged.]
+
 ## Open questions
 
-OQ1–OQ4 are answered (decisions, not open items); OQ5 is open.
+OQ1–OQ5 are answered (decisions, not open items).
 
 - **OQ1** Discovery authenticity (F6): (a) client-side publisher filtering, (b) the curated on-chain
   `publish_curated` from `seal-policies-sui` OQ4, (c) content signing in the manifest. **Answered: (a).**
@@ -1385,11 +1393,11 @@ OQ1–OQ4 are answered (decisions, not open items); OQ5 is open.
 - **OQ3** Support legacy `seal_policies` namespaces (F16)? **Answered: no**; superseded packages are
   republished, not migrated.
 - **OQ4** Ship `.d.ts` declarations like the sibling SDKs? **Answered: yes**, since 0.0.16 (F18).
-- **OQ5** (new, F27) Should the library explain a refusal itself? A key server's answer carries no abort, but the approve PTB simulated as the requester does. Options:
-  (a) leave it to the caller (what the README documents now); (b) `SealController.explainRefusal(type, params, id, { address })` that builds the same approve PTB,
-  simulates it and returns `classifyPolicyAbort`'s answer or the ownership error, for the caller to run after a `NoAccessError`; (c) do it inside `decrypt`
-  and wrap the error. **Recommendation: (b)**: it is opt-in (one extra RPC only when the caller asks), keeps `decrypt`'s errors unchanged, and uses only
-  public APIs; (c) adds an RPC to every failure and changes thrown types. It is new public API, so it waits for the maintainer.
+- **OQ5** (F27) Should the library explain a refusal itself? A key server's answer carries no abort, but the approve PTB simulated as the requester does. Options:
+  (a) leave it to the caller; (b) `SealController.explainRefusal(type, params, id, { address })` that builds the same approve PTB, simulates it and returns the
+  classified abort or the ownership error, for the caller to run after a `NoAccessError`; (c) do it inside `decrypt` and wrap the error. **Decided 2026-10-22
+  (the maintainer's delegate, single best-practice answer): (b).** It is opt-in (one extra read-only RPC only when the caller asks), keeps `decrypt`'s errors
+  unchanged and uses only public APIs; (c) adds an RPC to every failure and changes thrown types. Implemented in 0.0.23 (F27, S8).
 
 ## Risks
 
@@ -1488,6 +1496,12 @@ OQ1–OQ4 are answered (decisions, not open items); OQ5 is open.
   - **Dispositions (25 entries):** RESOLVED 18 (adds F10), MITIGATED 2 (F13, F27), ADJUDICATED 2 (F16, F24), Positive 3. New: F27 and OQ5 (recommendation (b), waits for the maintainer). Section D: the live round-trip box is ticked.
   - **Measured:** `tsc --noEmit`, eslint, vitest 121/121 (unit), integration config 9 passed / 8 skipped without a key. Release: none needed for the test and README (no `src` change); a helper for OQ5 would be 0.0.23.
 
+- 2026-10-22 (0.0.23, local commit, not released) — OQ5 decided (b); `explainRefusal` (F27).
+  - **Decided:** OQ5 option (b), recorded as decided 2026-10-22 by the maintainer's delegate: opt-in helper, `decrypt` unchanged.
+  - **Done:** `src/refusal.ts` (`explainApproveRefusal`, `refusalMessage`, `REASON_NOT_OWNER`, types `RefusalExplanation`, `RefusalClient`) and `SealController.explainRefusal`; read-only `simulateTransaction` as the requester, `classifyPolicyAbort` with `[originalId, publishedAt]`, the non-owner simulation error as `NOT_OWNER`, never throws on a refusal (network errors and unreadable results are `unknown` with the `cause`/`raw`). README section "Why was this decrypt refused?", CLAUDE.md key-files row, CHANGELOG, version 0.0.23.
+  - **Measured:** `tsc --noEmit`, eslint, vitest 182/182 (13 files; 61 new in `tests/refusal.test.ts`), build, pack and `check:deployments` clean. Live: `tests/integration/nft-gate.integration.test.ts` (extended to assert `explainRefusal` for the positive and every negative) passed 8/8 on 2026-10-22 against the testnet committee with the maintenance runner key (balance 0.376 SUI before the run); `NOT_OWNER` observed for the non-owner, `E_WRONG_GATE`, `E_ID_NOT_NAMESPACED`, `E_EXHAUSTED`, `E_GATE_PAUSED` and `E_TOO_EARLY` named, the owner `allowed`.
+  - **Dispositions (25 entries):** RESOLVED 19 (adds F27), MITIGATED 1 (F13), ADJUDICATED 2 (F16, F24), Positive 3. S8 added; Section D box added; OQ5 answered.
+
 ## Pre-save consistency checklist (this pass)
 
 - [x] Section A ↔ findings — no GAP rows remain; rows cite F6, F7, F8, F9, F10, F12, F13, F14, F19, F24, F25.
@@ -1496,6 +1510,7 @@ OQ1–OQ4 are answered (decisions, not open items); OQ5 is open.
 - [x] Closing four-part structure — present (normative, suggestions, open questions, risks).
 - [x] Section D ↔ dispositions — unticked items are mainnet-blocked or maintainer-only, and say which.
 - [x] Executive summary ↔ dispositions and ceiling (no finding open above Low).
-- [x] C.1 counts — tests measured 2026-10-22 (121/121); coverage percentages are the 2026-10-03 figures.
+- [x] C.1 counts — tests measured 2026-10-22 (182/182); coverage percentages are the 2026-10-03 figures.
 - [x] Re-verification log entry added (2026-10-03 and 2026-10-09).
+- [x] 2026-10-22 (0.0.23): F27 RESOLVED (`explainRefusal`), OQ5 answered, S8 and a Section D box added; counts 25 entries (RESOLVED 19, MITIGATED 1); C.1 182/182; log entry added.
 - [x] 2026-10-22 (live run): F10 RESOLVED, F27 and OQ5 added; the Section D live box ticked; C.2, S5, S7 and Risks lines updated; counts 25 entries (RESOLVED 18); log entry added.

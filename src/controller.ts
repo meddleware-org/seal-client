@@ -4,6 +4,8 @@ import { Transaction } from '@mysten/sui/transactions'
 import type { PolicyRegistry } from './registry.js'
 import { bytesToHex, hexToBytes } from './bytes.js'
 import { assertLinkedGate } from './gate-check.js'
+import { explainApproveRefusal } from './refusal.js'
+import type { RefusalClient, RefusalExplanation } from './refusal.js'
 import type { SealSuggestClient } from './types.js'
 
 /** One key server in the threshold committee. */
@@ -187,6 +189,43 @@ export class SealController {
       sessionKey,
       txBytes,
       checkShareConsistency: this.cfg.checkShareConsistency ?? true,
+    })
+  }
+
+  /**
+   * Explain why a decrypt was (or would be) refused: builds the same approve PTB `decrypt` sends to the key
+   * servers, simulates it as `opts.address` over the controller's client (read-only: no signing, no funds, one
+   * RPC) and returns the policy abort it hits. The key servers' own refusal (`NoAccessError`,
+   * `InvalidParameterError`) carries no abort, which is why this exists.
+   *
+   * Call it after a decrypt failed, never automatically: `decrypt` does not call it. It does not throw on a
+   * refusal; an error while simulating (network, a node that rejects the build) comes back as
+   * `kind: 'unknown'` with the error as `cause`. `kind: 'allowed'` means the policy approves this address, so the
+   * refusal came from the key servers (unreachable, below the threshold, or a full node that has not seen a new
+   * object yet). It does not use or mint a SessionKey.
+   *
+   * @throws {Error} only for an unregistered policy `type` (as `decrypt`).
+   */
+  async explainRefusal<P>(
+    type: string,
+    params: P,
+    id: string,
+    opts: { address: string },
+  ): Promise<RefusalExplanation> {
+    const provider = this.registry.get<P>(type)
+    let tx: Transaction
+    try {
+      const idBytes = hexToBytes(id)
+      tx = new Transaction()
+      provider.buildApprove(tx, { publishedAt: this.cfg.publishedAt, policyConfigId: this.cfg.policyConfigId }, idBytes, params)
+      assertApproveOnly(tx, this.cfg.publishedAt)
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error)
+      return { kind: 'unknown', message: `Could not build the access check: ${text}`, cause: error }
+    }
+    return explainApproveRefusal(this.cfg.suiClient as unknown as RefusalClient, tx, {
+      sender: opts.address,
+      policyPackageIds: [this.cfg.originalId, this.cfg.publishedAt],
     })
   }
 

@@ -3,6 +3,22 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.23] - 2026-10-22
+
+### Added
+
+- `SealController.explainRefusal(type, params, id, { address })`: says why a decrypt was refused. A key server's refusal
+  (`NoAccessError`, `InvalidParameterError`) carries no Move abort, so `classifyPolicyAbort` cannot read it; this builds the
+  same approve PTB, simulates it as the requester over the controller's client (read-only `simulateTransaction`: no signing, no
+  funds, one RPC) and returns `{ kind: 'allowed' | 'refused' | 'unknown', reason?, module?, code?, message, advice?, cause?, raw? }`.
+  `reason` is the Move constant (`E_GATE_PAUSED`, `E_EXHAUSTED`, `E_WRONG_GATE`, `E_TOO_EARLY`, `E_WRONG_VERSION`, …) or
+  `NOT_OWNER` (the requester does not own the pass: the node refuses to simulate it); `message` is UI text. It never throws on a
+  refusal; a network error or an unreadable result is `unknown` with the `cause`. `decrypt` does not call it. Also exported:
+  `explainApproveRefusal(client, tx, { sender, policyPackageIds })` for a transaction built elsewhere, `refusalMessage`,
+  `REASON_NOT_OWNER` and the types `RefusalExplanation` and `RefusalClient`.
+- The maintainer-run live nft-gate test asserts `explainRefusal` for the positive and every negative (run against the testnet
+  committee 2026-10-22).
+
 ## [0.0.22] - 2026-10-22
 
 ### Added

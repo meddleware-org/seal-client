@@ -104,28 +104,62 @@ All three come from `@meddleware/seal-client/deployments`, which is generated fr
 
 ## Telling aborts apart
 
-A refused decryption or publish surfaces as a Move abort, and the small abort codes overlap between modules
-(`nft_gate`, `timelock`, `config` and `sealed_content` all use `1`), so read the **module and the code** together, never the code alone.
-`classifyPolicyAbort` does this for the `seal_policies` modules:
+The small abort codes of the `seal_policies` modules overlap (`nft_gate`, `timelock`, `config` and `sealed_content` all use `1`), so read the
+**module and the code** together, never the code alone. `classifyPolicyAbort` does this for the `seal_policies` modules:
 
 ```ts
 import { classifyPolicyAbort } from '@meddleware/seal-client'
 
-try {
-  await controller.decrypt(type, params, id, ciphertext, opts)
-} catch (e) {
-  const abort = classifyPolicyAbort(e, { policyPackageIds: [deployment.originalId, deployment.publishedAt] })
-  if (abort?.module === 'nft_gate' && abort.code === 4) showPaused() // E_GATE_PAUSED: access resumes when the operator unpauses
-  else if (abort?.module === 'config' && abort.code === 1) rebuildAgainstCurrentPublishedAt() // E_WRONG_VERSION
-  else throw e
-}
+const abort = classifyPolicyAbort(executionError, { policyPackageIds: [deployment.originalId, deployment.publishedAt] })
+if (abort?.module === 'nft_gate' && abort.code === 4) showPaused() // E_GATE_PAUSED: access resumes when the operator unpauses
+else if (abort?.module === 'config' && abort.code === 1) rebuildAgainstCurrentPublishedAt() // E_WRONG_VERSION
 ```
 
 `POLICY_ABORTS` lists every code (name, meaning, advice); `describePolicyAbort(module, code)` looks one up and
 `parseMoveAbort` reads the abort out of a message, a structured status or an error's `cause` chain. Pass `policyPackageIds`
-so an abort from another package's module of the same name (for example `access_gate`) is not named. Whether a
-key server forwards the abort text to the client depends on the server; when it does not, the function returns undefined and the
-caller shows a generic refusal.
+so an abort from another package's module of the same name (for example `access_gate`) is not named.
+
+### Why was this decrypt refused? `explainRefusal`
+
+**A key server's refusal does not carry the abort.** The public testnet committee answers with `NoAccessError` ("User does not have access to one
+or more of the requested keys") for every policy abort, and with `InvalidParameterError` when the requester does not own an address-owned pass, so
+`classifyPolicyAbort(error)` finds nothing in the error of `decrypt`. The same approve transaction, simulated by the client as the requester, does
+abort with the real code. `SealController.explainRefusal` runs that simulation:
+
+```ts
+import { NoAccessError, InvalidParameterError } from '@mysten/seal'
+
+try {
+  return await controller.decrypt('nft-gate', params, id, ciphertext, { address, signPersonalMessage })
+} catch (e) {
+  if (!(e instanceof NoAccessError || e instanceof InvalidParameterError)) throw e
+  // One extra read-only RPC, only because the app asks for it. It never signs and never spends.
+  const why = await controller.explainRefusal('nft-gate', params, id, { address })
+  switch (why.kind) {
+    case 'refused': // why.reason: 'E_GATE_PAUSED' | 'E_EXHAUSTED' | 'E_WRONG_GATE' | 'E_TOO_EARLY' | 'E_WRONG_VERSION' | 'NOT_OWNER' | …
+      showToUser(why.message) // UI text, e.g. "Access is paused by the gate operator. It resumes when the gate is unpaused."
+      break
+    case 'allowed': // the policy approves this address: the key servers were the problem (down, below the threshold, stale view)
+    case 'unknown': // the simulation could not run or be read: why.cause / why.raw
+      showToUser(why.message)
+  }
+}
+```
+
+The result is `{ kind: 'allowed' | 'refused' | 'unknown', reason?, module?, code?, message, advice?, cause?, raw? }`:
+
+- `refused`: the approve call aborts, or the requester does not own the presented pass (`reason: 'NOT_OWNER'`, no module or code: the node refuses to
+  simulate it). `reason` is the Move constant's name; it is absent when the abort is not one this package knows (another package's module, or a code the
+  table does not define), but `module`, `code` and `raw` are still set. `message` is text for the user; `advice` is the developer-facing hint from `POLICY_ABORTS`.
+- `allowed`: the policy approves this address, so the refusal came from the key servers (unreachable, fewer than the threshold answering, or a full node that
+  has not seen a new object yet).
+- `unknown`: a network error, a node that rejects the build, a failure that is not a Move abort, or a result in a shape this package does not read.
+  It never throws on a refusal; only an unregistered policy `type` throws, as `decrypt` does.
+
+Behaviour to know: `decrypt` does not call it (that would add an RPC to every failure and change what `decrypt` throws), and it needs no SessionKey. Because a
+`SealController` keeps the keys it has fetched, a pause or an exhausted pass reaches only a controller created afterwards, while `explainRefusal` always asks
+the chain now. Without a controller, `explainApproveRefusal(client, approveTx, { sender, policyPackageIds })` explains a transaction you built yourself.
+Trust: the answer is the chain's view through the full node your client uses, an estimate for the UI; the key servers decide.
 
 ## Re-sealing onto new key servers
 
@@ -216,7 +250,7 @@ SEAL_TESTNET=1 SEAL_LIVE_KEY_FILE=/path/to/one-suiprivkey-testnet-key \
 A run creates its own scratch gates on the live `access_gate` and costs about 0.05 SUI. A refusal reaches the caller as `NoAccessError`
 ("User does not have access to one or more of the requested keys") or, for a pass the requester does not own, `InvalidParameterError`: **the key
 server's answer does not carry the Move abort**, so `classifyPolicyAbort` cannot read it from the error of `decrypt`. To tell a paused gate from a
-used-up pass, simulate the approve PTB as the requester (`client.core.simulateTransaction`) and classify the result; the test does exactly that.
+used-up pass, call `controller.explainRefusal` (see "Why was this decrypt refused?"); the test calls it for every negative and asserts the classification.
 A `SealController` keeps the keys it has fetched, so a pause or an exhausted pass takes effect only for a controller created afterwards.
 
 ## License

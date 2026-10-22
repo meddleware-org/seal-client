@@ -49,6 +49,13 @@ export {
   type PolicyAbort,
   type PolicyModule,
 } from './aborts.js'
+export {
+  REASON_NOT_OWNER,
+  explainApproveRefusal,
+  refusalMessage,
+  type RefusalClient,
+  type RefusalExplanation,
+} from './refusal.js'
 export { gateOperators } from './operators.js'
 export { assertLinkedGate } from './gate-check.js'
 // Deployment ids are in the `@meddleware/seal-client/deployments` subpath.

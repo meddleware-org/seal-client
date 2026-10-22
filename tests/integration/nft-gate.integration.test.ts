@@ -19,9 +19,11 @@
  * Findings this pins (2026-10-22, key servers: Mysten testnet committee):
  * - a refusal reaches the client as `NoAccessError` ("User does not have access to one or more of the
  *   requested keys") WITHOUT the Move abort, so `classifyPolicyAbort` cannot read it from the decrypt error;
- *   the same abort is read by simulating the approve PTB (`approveAbort` below);
+ *   the same abort is read by simulating the approve PTB (`explainAs` below, via `SealController.explainRefusal`);
  * - a non-owner presenting someone else's address-owned pass is `InvalidParameterError` ("PTB contains an
  *   invalid parameter, possibly a newly created object that the FN has not yet seen");
+ * - `SealController.explainRefusal` (0.0.23) does that simulation for the app and returns the classified reason; every
+ *   negative below asserts it (and the positive asserts `allowed`);
  * - one SealController (one SealClient) caches the keys it has fetched, so a pause or an exhausted pass takes
  *   effect only for a NEW controller: every refusal below uses a fresh one.
  */
@@ -43,7 +45,7 @@ import {
 import type { GateAdminContext } from '@meddleware/access-gate-client'
 import { SealController } from '../../src/controller.js'
 import type { KeyServerConfig } from '../../src/controller.js'
-import { classifyPolicyAbort } from '../../src/aborts.js'
+import { REASON_NOT_OWNER } from '../../src/refusal.js'
 import { createDefaultRegistry } from '../../src/default-registry.js'
 import { sealPoliciesDeployment } from '../../src/deployments.js'
 
@@ -84,21 +86,13 @@ function controller(allowTransferableGates = false): SealController {
   )
 }
 
-/** What the approve PTB does as a dry run for `sender`: the Move abort it hits, or null when it succeeds. */
-async function approveAbort(
-  params: { gateId: string; nftId: string; soulbound: boolean },
-  id: string,
+/** What the library says about a refusal: `SealController.explainRefusal` (simulates the approve PTB as `sender`). */
+const explainAs = (
   sender: string,
-): Promise<ReturnType<typeof classifyPolicyAbort> | 'approved'> {
-  const tx = new Transaction()
-  const idBytes = Uint8Array.from(Buffer.from(id, 'hex'))
-  createDefaultRegistry(GATE.originalId).get<typeof params>('nft-gate').buildApprove(tx, POLICY, idBytes, params)
-  tx.setSender(sender)
-  const res = await client.core.simulateTransaction({ transaction: tx, include: { effects: true } })
-  const body = res.Transaction ?? res.FailedTransaction
-  if (body.status.success) return 'approved'
-  return classifyPolicyAbort(body.status.error, { policyPackageIds: [POLICY.originalId, POLICY.publishedAt] })
-}
+  g: { gateId: string; soulbound: boolean },
+  nftId: string,
+  s: { id: string },
+) => controller().explainRefusal('nft-gate', { gateId: g.gateId, nftId, soulbound: g.soulbound }, s.id, { address: sender })
 
 describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (maintainer-run, spends testnet SUI)', () => {
   const plaintext = new TextEncoder().encode('seal-client live nft-gate round trip')
@@ -189,7 +183,7 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
 
   it('positive: the owner of a valid pass decrypts', async () => {
     expect(await decryptAs(keypair, gates.main, passB, sealed)).toEqual(plaintext)
-    expect(await approveAbort({ gateId: gates.main.gateId, nftId: passB, soulbound: true }, sealed.id, address)).toBe('approved')
+    expect(await explainAs(address, gates.main, passB, sealed)).toMatchObject({ kind: 'allowed' })
   }, 120_000)
 
   it('negative: an address that does not own the pass is refused (InvalidParameterError)', async () => {
@@ -197,14 +191,14 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
     const err = await decryptAs(stranger, gates.main, passB, sealed).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(InvalidParameterError)
     expect((err as Error).message).toContain('PTB contains an invalid parameter')
+    expect(await explainAs(stranger.toSuiAddress(), gates.main, passB, sealed)).toMatchObject({ kind: 'refused', reason: REASON_NOT_OWNER })
   }, 120_000)
 
   it('negative: a pass of another gate (E_WRONG_GATE)', async () => {
     const err = await decryptAs(keypair, gates.other, passB, sealedOther).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(NoAccessError)
     expect((err as Error).message).toBe('User does not have access to one or more of the requested keys')
-    const abort = await approveAbort({ gateId: gates.other.gateId, nftId: passB, soulbound: true }, sealedOther.id, address)
-    expect(abort).toMatchObject({ module: 'nft_gate', name: 'E_WRONG_GATE' })
+    expect(await explainAs(address, gates.other, passB, sealedOther)).toMatchObject({ kind: 'refused', module: 'nft_gate', reason: 'E_WRONG_GATE', code: 2 })
   }, 120_000)
 
   it('negative: an identity that is not namespaced to the gate (E_ID_NOT_NAMESPACED); the controller refuses it before any key request', async () => {
@@ -216,15 +210,13 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
       }),
     ).rejects.toThrow(/id\/params mismatch/)
     // Only a hand-built request could reach a key server with it; the approve dry run it would run aborts.
-    const abort = await approveAbort({ gateId: gates.main.gateId, nftId: passB, soulbound: true }, sealedOther.id, address)
-    expect(abort).toMatchObject({ module: 'nft_gate', name: 'E_ID_NOT_NAMESPACED' })
+    expect(await explainAs(address, gates.main, passB, sealedOther)).toMatchObject({ kind: 'refused', module: 'nft_gate', reason: 'E_ID_NOT_NAMESPACED', code: 1 })
   }, 120_000)
 
   it('negative: an exhausted single-use pass (E_EXHAUSTED)', async () => {
     const err = await decryptAs(keypair, gates.main, passA, sealed).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(NoAccessError)
-    const abort = await approveAbort({ gateId: gates.main.gateId, nftId: passA, soulbound: true }, sealed.id, address)
-    expect(abort).toMatchObject({ module: 'nft_gate', name: 'E_EXHAUSTED' })
+    expect(await explainAs(address, gates.main, passA, sealed)).toMatchObject({ kind: 'refused', module: 'nft_gate', reason: 'E_EXHAUSTED', code: 3 })
   }, 120_000)
 
   it('negative: a paused gate whose policy blocks decryption (E_GATE_PAUSED), then it resumes', async () => {
@@ -235,8 +227,7 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
       await sleep(5000)
       const err = await decryptAs(keypair, gates.main, passB, sealed).catch((e: unknown) => e)
       expect(err).toBeInstanceOf(NoAccessError)
-      const abort = await approveAbort({ gateId: gates.main.gateId, nftId: passB, soulbound: true }, sealed.id, address)
-      expect(abort).toMatchObject({ module: 'nft_gate', name: 'E_GATE_PAUSED' })
+      expect(await explainAs(address, gates.main, passB, sealed)).toMatchObject({ kind: 'refused', module: 'nft_gate', reason: 'E_GATE_PAUSED', code: 4 })
       // A controller that already fetched the key keeps decrypting: a revocation reaches only new key requests.
       expect(await decryptAs(keypair, gates.main, passB, sealed, warm)).toEqual(plaintext)
     } finally {
@@ -251,6 +242,7 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
     const { id, ciphertext } = await ctl.encrypt('time-lock', { unlockMs: Date.now() + 86_400_000, allowPast: true }, plaintext)
     const err = await ctl.decrypt('time-lock', {}, id, ciphertext, { address, signPersonalMessage: sign(keypair) }).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(NoAccessError)
+    expect(await ctl.explainRefusal('time-lock', {}, id, { address })).toMatchObject({ kind: 'refused', module: 'timelock', reason: 'E_TOO_EARLY', code: 2 })
   }, 120_000)
 
   it('F16: a frozen transferable pass opens the content to any address; the default config refuses to seal to such a gate', async () => {
