@@ -69,6 +69,7 @@ one Move module 1:1.
 | `src/providers/timelock.ts` | Clock-based time-lock policy (`0x6`). |
 | `src/sealed-content.ts` | Discovery pointers: publish builders, `listSealedContent` (full node / indexer), BCS event parser. |
 | `src/deployments.ts` | GENERATED `seal_policies` ids per network (subpath `./deployments`). |
+| `src/aborts.ts` | `seal_policies` abort codes keyed by `(module, code)` (`POLICY_ABORTS`, `classifyPolicyAbort`): the codes overlap between modules, so never match on the code alone. `tests/aborts.test.ts` compares the table with the Move constants when seal-policies-sui is checked out beside this repo. |
 | `src/bytes.ts` | Hex/id/u64-BE/nonce/concat helpers — the single source of identity-byte truth. |
 | `src/index.ts` | Public surface (types, registry, controller, providers, sealed-content helpers). |
 

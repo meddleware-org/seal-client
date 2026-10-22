@@ -3,6 +3,19 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.22] - 2026-10-22
+
+### Added
+
+- Abort map for the `seal_policies` modules, keyed by `(module, code)` because the small codes overlap
+  (`nft_gate`, `timelock`, `config` and `sealed_content` all define `1`): `POLICY_ABORTS`, `describePolicyAbort(module, code)`,
+  `parseMoveAbort(input)` and `classifyPolicyAbort(input, { policyPackageIds? })`. `nft_gate` code 4 is `E_GATE_PAUSED`
+  (access resumes when the operator unpauses) and `config` code 1 is `E_WRONG_VERSION` (rebuild the transaction against the
+  current `published-at`). The parser reads the Sui clients' abort message, the older debug form, a structured
+  `{ abortCode, location }` status and an `Error` with its `cause` chain; with `policyPackageIds` an abort from a package
+  that is not the policy package is not named. A test compares the table with the Move constants when `seal-policies-sui`
+  is checked out beside this repository.
+
 ## [0.0.21] - 2026-10-20
 
 ### Changed

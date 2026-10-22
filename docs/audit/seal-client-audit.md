@@ -26,6 +26,8 @@ scoped, not a token this package issues), no signing scripts and no image.
   `9ef93f9` (code commit `48fd9d6`; the later commit only records the hash in this audit). It carries an SLSA v1
   provenance attestation (`dist.attestations`, checked with `npm view` 2026-10-18). 0.0.19 (tag `v0.0.19` =
   `3527c58`, 2026-10-09) was the version of the 2026-10-09 pass; the Dependabot group bump `b4a42ea` shipped with 0.0.20.
+- Working tree 2026-10-22: version **0.0.22** (local commit, not tagged or published) adds the `seal_policies` abort
+  map (S7 below; seal-policies-sui OQ5). 0.0.21 was released in between if it has been tagged by then; this line records the working tree.
 - Working tree 2026-10-20: version **0.0.21** (local commit, not tagged or published) raises the
   `@meddleware/access-gate-client` dependency to `^0.0.10` and pins the stale-head-page fallback (F26). Its lockfile
   keeps the 0.0.9 entry until access-gate-client 0.0.10 is published and `npm install` is run (the tests ran against a
@@ -1163,7 +1165,7 @@ the README no longer suggests it (F11), and MeddleWare's apps use t = 2 (ADR-000
 
 ## Section C — Test-coverage & hermetic/live split
 
-### C.1 Coverage grade — A- (109/109 hermetic tests, 11 files, 2026-10-20 (103 on 2026-10-18); coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
+### C.1 Coverage grade — A- (121/121 hermetic tests, 12 files, 2026-10-22 (109 on 2026-10-20, 103 on 2026-10-18); coverage % not re-measured, 2026-10-03 figures: 95.13% statements, 91.25% branches, 96.62% lines for the 77-test suite)
 
 | Dimension | Assessment |
 | --- | --- |
@@ -1338,6 +1340,12 @@ Status at 2026-10-09 in brackets.
 - **S6** MAY warn at construction when `threshold === 1` or when `verifyKeyServers` is disabled by a
   mixed configuration (F11, F13). [Not added; `verifiesKeyServers` exposes the setting.]
 
+- **S7** SHOULD map the `seal_policies` abort codes by `(module, code)` so a client can tell a paused gate from a missing pass
+  and a retired package version from a bad identity (seal-policies-sui dev-guide rule 5, OQ5). [Done in 0.0.22, commit pending:
+  `src/aborts.ts` (`POLICY_ABORTS`, `describePolicyAbort`, `parseMoveAbort`, `classifyPolicyAbort`), `nft_gate` 4 `E_GATE_PAUSED` and `config` 1
+  `E_WRONG_VERSION` plus the other codes of the four modules; `tests/aborts.test.ts` (8 tests, and 4 that compare the table with the Move
+  constants when seal-policies-sui is next to this repo). Not verified live: what text a key server returns to the client for a refused dry run.]
+
 ## Open questions
 
 All four are answered; the answers are decisions, not open items.
@@ -1439,6 +1447,11 @@ All four are answered; the answers are decisions, not open items.
   - **Dispositions (24 entries):** RESOLVED 17 (adds F26); MITIGATED 2 (F10, F13); ADJUDICATED 2 (F16, F24);
     Positive 3.
 
+- 2026-10-22 (fix wave, 0.0.22, local commit, not released) — the abort map (S7).
+  - **Done:** `src/aborts.ts` exports `POLICY_ABORTS` (every code of `config`, `nft_gate`, `timelock`, `sealed_content`), `describePolicyAbort(module, code)`, `parseMoveAbort` (the Sui clients' abort message, the older debug form, a structured status, an `Error` and its `cause` chain) and `classifyPolicyAbort(input, { policyPackageIds })`, which refuses an abort from a package that is not the policy package. `nft_gate` 4 is `E_GATE_PAUSED` and `config` 1 is `E_WRONG_VERSION`. README section "Telling aborts apart", CLAUDE.md key-files row, CHANGELOG.
+  - **Measured:** vitest 121/121 (12 files; 109 before), `tsc --noEmit` and eslint clean. The table is compared with the Move constants of the sibling checkout (seal-policies-sui `sources/*.move`) in four tests.
+  - **Not verified:** what a key server's refusal looks like to the client (the abort text may not reach the caller; the parser then returns undefined and the caller shows a generic refusal). No disposition changes; no finding was opened or closed by this item.
+
 ## Pre-save consistency checklist (this pass)
 
 - [x] Section A ↔ findings — no GAP rows remain; rows cite F6, F7, F8, F9, F10, F12, F13, F14, F19, F24, F25.
@@ -1447,5 +1460,5 @@ All four are answered; the answers are decisions, not open items.
 - [x] Closing four-part structure — present (normative, suggestions, open questions, risks).
 - [x] Section D ↔ dispositions — unticked items are mainnet-blocked or maintainer-only, and say which.
 - [x] Executive summary ↔ dispositions and ceiling (no finding open above Low).
-- [x] C.1 counts — tests measured 2026-10-20 (109/109); coverage percentages are the 2026-10-03 figures.
+- [x] C.1 counts — tests measured 2026-10-22 (121/121); coverage percentages are the 2026-10-03 figures.
 - [x] Re-verification log entry added (2026-10-03 and 2026-10-09).

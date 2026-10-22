@@ -40,6 +40,15 @@ export {
   type SealedContentPage,
   type SealedContentPointer,
 } from './sealed-content.js'
+export {
+  POLICY_ABORTS,
+  classifyPolicyAbort,
+  describePolicyAbort,
+  parseMoveAbort,
+  type ParsedMoveAbort,
+  type PolicyAbort,
+  type PolicyModule,
+} from './aborts.js'
 export { gateOperators } from './operators.js'
 export { assertLinkedGate } from './gate-check.js'
 // Deployment ids are in the `@meddleware/seal-client/deployments` subpath.

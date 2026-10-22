@@ -102,6 +102,31 @@ All three come from `@meddleware/seal-client/deployments`, which is generated fr
 `Published.toml` and `deployments.json` that `@meddleware/seal-policies-sui` publishes. Pass
 `{ publishedAt, policyConfigId }` (a `SealPolicyTarget`) wherever a call target is needed.
 
+## Telling aborts apart
+
+A refused decryption or publish surfaces as a Move abort, and the small abort codes overlap between modules
+(`nft_gate`, `timelock`, `config` and `sealed_content` all use `1`), so read the **module and the code** together, never the code alone.
+`classifyPolicyAbort` does this for the `seal_policies` modules:
+
+```ts
+import { classifyPolicyAbort } from '@meddleware/seal-client'
+
+try {
+  await controller.decrypt(type, params, id, ciphertext, opts)
+} catch (e) {
+  const abort = classifyPolicyAbort(e, { policyPackageIds: [deployment.originalId, deployment.publishedAt] })
+  if (abort?.module === 'nft_gate' && abort.code === 4) showPaused() // E_GATE_PAUSED: access resumes when the operator unpauses
+  else if (abort?.module === 'config' && abort.code === 1) rebuildAgainstCurrentPublishedAt() // E_WRONG_VERSION
+  else throw e
+}
+```
+
+`POLICY_ABORTS` lists every code (name, meaning, advice); `describePolicyAbort(module, code)` looks one up and
+`parseMoveAbort` reads the abort out of a message, a structured status or an error's `cause` chain. Pass `policyPackageIds`
+so an abort from another package's module of the same name (for example `access_gate`) is not named. Whether a
+key server forwards the abort text to the client depends on the server; when it does not, the function returns undefined and the
+caller shows a generic refusal.
+
 ## Re-sealing onto new key servers
 
 A ciphertext can only be decrypted by the key servers it was sealed to. To move content to a new
