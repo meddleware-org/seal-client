@@ -983,7 +983,7 @@ operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
 
 ### F26 — A stuck indexer that still answers `200` shows frozen discovery (stale head pages were used)
 
-**Severity:** Low   **Disposition:** RESOLVED (0.0.21, 2026-10-20, commit pending; the check is access-gate-client F25 / sui-indexer F19)
+**Severity:** Low   **Disposition:** RESOLVED (0.0.21, 2026-10-20, commit 8d3f8e6; the check is access-gate-client F25 / sui-indexer F19)
 **Where:** `src/sealed-content.ts::listFromIndexer` (calls the shared `readIndexerEvents`).
 
 **Issue:**
@@ -995,7 +995,7 @@ operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
 **Impact:** stale discovery (new pointers missing) for as long as an ingest failure lasts. Display only: decryption
 is authorised on-chain and the pointers stay unauthenticated either way (F6).
 
-**Remediation / evidence (2026-10-20, 0.0.21, commit pending):**
+**Remediation / evidence (2026-10-20, 0.0.21, commit 8d3f8e6):**
 
 - No new logic here: the shared reader treats a head page (no `before`) whose `polledAt` is missing, `null`,
   not an epoch-ms integer or older than `STALE_AFTER_MS` (60 s = 4 poll intervals) by the client's `Date.now()`
@@ -1429,7 +1429,7 @@ All four are answered; the answers are decisions, not open items.
   mainnet items, external review).
 - 2026-10-19 — dependency-bot status checked (read-only): `.github/dependabot.yml` carries the `ignore` rules and the repository has no open Dependabot pull requests (`gh pr list`, 2026-10-19). Versions, findings and gates were not re-examined in this pass.
   - Dependabot policy encoded in .github/dependabot.yml (majors declined); open PRs merged 2026-10-19
-- 2026-10-20 — sui-indexer F19 closed on the discovery side: version 0.0.21 (local commit, commit pending; not tagged or
+- 2026-10-20 — sui-indexer F19 closed on the discovery side: version 0.0.21 (local commit, commit 8d3f8e6; not tagged or
   published), `@meddleware/access-gate-client` `^0.0.10`.
   - **F26 RESOLVED:** `listSealedContent` falls back to the full node when the indexer's head page is stale (inherited from
     the shared reader, access-gate-client F25); six hermetic tests added; the indexer fixtures carry `polledAt`.
