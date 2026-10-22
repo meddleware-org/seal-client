@@ -51,7 +51,7 @@ scoped, not a token this package issues), no signing scripts and no image.
   no finding is open above **Low**.
 
 **Status:** first in-repo pass (2026-10-03); re-verified against 0.0.19 on 2026-10-09. Every first-pass
-finding was fixed in 0.0.16–0.0.19 except the live nft-gate negatives (F10, maintainer-only). The 2026-10-18 fix wave (0.0.20) closed F20 and F25; 0.0.20 is released (npm, 2026-10-18) and consumed at `^0.0.20`.
+finding was fixed in 0.0.16–0.0.19 except the live nft-gate negatives (F10, maintainer-only; run 2026-10-22, see the log). The 2026-10-18 fix wave (0.0.20) closed F20 and F25; 0.0.20 is released (npm, 2026-10-18) and consumed at `^0.0.20`.
 
 **Finding IDs.** The tests and `SECURITY.md` cite three findings of an earlier workspace-corpus
 audit: `F2` (nonce widths), `F4` (non-hex rejection) and `F5` (id↔params cross-check). Those IDs and
@@ -158,7 +158,7 @@ unsupported; mainnet key servers Overclock / NodeInfra / H2O Open mode 2-of-3, E
   ADR-0002), F12 (`Object.hasOwn`), F14 (manifest and params validation), F15 (skip-and-count, scan cap),
   F17 (soulbound-only), F18 (declarations, `SECURITY.md`, CI parity), F19 (replace guard).
 - **Mitigated:** F10 (hermetic `encrypt` tests and the weekly live run; the live nft-gate negatives remain
-  and are maintainer-only), F13 (`verifiesKeyServers`; the SDK switch itself is unchanged).
+  and are maintainer-only; **since resolved 2026-10-22**), F13 (`verifiesKeyServers`; the SDK switch itself is unchanged).
 - **Adjudicated:** F16 (legacy namespaces unsupported), F24 (the gate and soulbound checks are opt-in).
 - **Since resolved (0.0.20, 2026-10-18):** F25 (`gateOperators` tests added) and F20 (the two doc residuals fixed). **0.0.21 (2026-10-20):** F26 (a stale indexer head page falls back to the full node).
 
@@ -551,7 +551,7 @@ share one mint and one wallet prompt". `SECURITY.md` invariant 2 now holds as wr
 
 ### F10 — `encrypt` is untested hermetically; the live suite cannot detect a namespace regression and lacks nft-gate and negative cases
 
-**Severity:** Low   **Disposition:** MITIGATED (hermetic `encrypt` tests 0.0.16; weekly live run 0.0.17; the live nft-gate negatives are DEFERRED — maintainer-only, Section D)
+**Severity:** Low   **Disposition:** RESOLVED (hermetic `encrypt` tests 0.0.16; weekly live run 0.0.17; the funded nft-gate round trip with negatives ran on 2026-10-22 and is a maintainer-run test, `tests/integration/nft-gate.integration.test.ts`, commit pending)
 **Where:**
 
 - `src/controller.ts:100-110` (0% covered);
@@ -591,9 +591,14 @@ share one mint and one wallet prompt". `SECURITY.md` invariant 2 now holds as wr
 - Scheduled live run: `.github/workflows/live.yml` (Mondays 05:47 UTC and on dispatch; read-only, no
   secrets) runs `npm run test:integration` (added in 0.0.17, `cfd4a5e`). It passed locally on 2026-10-09:
   3 files, 9 tests.
-- Still missing: a live nft-gate decrypt round trip with negatives (wrong gate, exhausted or missing pass,
-  wrong namespace, paused gate). It needs a funded testnet wallet holding a pass for a test gate, which is
-  maintainer-only. DEFERRED to the Section D pre-mainnet gate; only "too early" is exercised live today.
+- Still missing at 2026-10-09: a live nft-gate decrypt round trip with negatives (wrong gate, exhausted or missing pass,
+  wrong namespace, paused gate). **Done 2026-10-22:** `tests/integration/nft-gate.integration.test.ts` (8 tests, passed against the public
+  testnet committee, run twice) creates its own scratch gates on the live `access_gate` with a funded key (`SEAL_LIVE_KEY_FILE`; it skips
+  without one, so the weekly job is unchanged) and covers: the positive round trip; a non-owner (`InvalidParameterError`); a pass of another gate
+  (`E_WRONG_GATE`); an exhausted pass (`E_EXHAUSTED`); a paused gate whose policy blocks decryption (`E_GATE_PAUSED`), refused and then resumed; an
+  identity not namespaced to the gate (`E_ID_NOT_NAMESPACED`: refused by the controller before any request, and the dry run aborts); a time-lock that
+  has not opened (`E_TOO_EARLY`); and the frozen transferable pass (seal-policies-sui F16: a stranger decrypts). It is maintainer-run by design:
+  a funded key must not be a CI secret (README, `OPERATOR_TASKS.md`). Digests: the seal-policies-sui audit log entry of 2026-10-22.
 
 ### F11 — The README's mainnet guidance contradicts ADR-0002 and the package's own invariants
 
@@ -1012,6 +1017,25 @@ is authorised on-chain and the pointers stay unauthenticated either way (F6).
   override. The existing indexer fixtures carry a fresh `polledAt`.
 - Found while closing sui-indexer F19.
 
+### F27 — A key server's refusal carries no Move abort, so `classifyPolicyAbort` cannot read a failed `decrypt` (found by the 2026-10-22 live run)
+
+**Severity:** Info   **Disposition:** MITIGATED (documented in the README and pinned by the maintainer-run live test; a client-side helper is OQ5)
+**Where:** `src/controller.ts::decrypt` (the error of `SealClient.decrypt` is passed through); `src/aborts.ts`.
+
+**Issue:** the abort map (S7, 0.0.22) was built on the assumption that the abort text might reach the caller; "not verified live" was recorded. The public
+testnet committee answers a refused dry run with `NoAccessError` ("User does not have access to one or more of the requested keys") for every policy
+abort (`E_WRONG_GATE`, `E_EXHAUSTED`, `E_GATE_PAUSED`, `E_TOO_EARLY`), and with `InvalidParameterError` ("PTB contains an invalid parameter, possibly a
+newly created object that the FN has not yet seen") when the requester does not own an address-owned pass. Neither carries the abort, so `parseMoveAbort` finds
+nothing in the error and `classifyPolicyAbort` returns `undefined`. Separately, one `SealController` (one `SealClient`) keeps the keys it fetched: a pause or an
+exhausted pass reaches only controllers created afterwards (a revocation cannot recall a delivered key, which is also how Seal is meant to work).
+
+**Impact:** a UI cannot say "this gate is paused" or "this pass is used up" from the decrypt error; it shows a generic refusal. Nothing is exposed: the refusal is correct.
+
+**Remediation / evidence:** the same approve PTB simulated as the requester (`client.core.simulateTransaction`) aborts with the real code and `classifyPolicyAbort`
+names it: observed 2026-10-22 for `E_WRONG_GATE` (2), `E_EXHAUSTED` (3), `E_GATE_PAUSED` (4), `E_ID_NOT_NAMESPACED` (1), `E_TOO_EARLY` (2) and, on a scratch package after
+`migrate`, `config::E_WRONG_VERSION` (1). A non-owner makes the simulation itself throw ("Transaction was not signed by the correct sender: Object … is owned by account address …").
+The README states this and `tests/integration/nft-gate.integration.test.ts` does it. A library helper that runs the simulation after a `NoAccessError` is OQ5.
+
 ---
 
 ## Section A — Invariant verification matrix
@@ -1182,14 +1206,14 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 | Layer | Files | Gating variable | In CI? |
 | --- | --- | --- | --- |
 | Unit (offline) | 11 files, 109 tests | — | yes (`node-ci.yml`, and as the publish `verify` job) |
-| Integration (live testnet: timelock round trip, ABI drift, sealed-content decode) | `tests/integration/*.integration.test.ts` (3 files, 9 tests) | `SEAL_TESTNET=1` (+ optional `GRPC_TESTNET_URL`) | weekly (`live.yml`) |
+| Integration (live testnet: timelock round trip, ABI drift, sealed-content decode) | `tests/integration/*.integration.test.ts` (4 files, 17 tests; the 8 of `nft-gate.integration.test.ts` skip without `SEAL_LIVE_KEY_FILE`) | `SEAL_TESTNET=1` (+ optional `GRPC_TESTNET_URL`); the nft-gate file also a funded key | weekly (`live.yml`) for the 9 keyless tests; the nft-gate file is maintainer-run |
 
 ### C.2 Hermetic vs. live paths
 
 | Path | Hermetic? | Deferred to | Tracking |
 | --- | --- | --- | --- |
 | Key-server committee behaviour, share consistency, full-node skew | no (live-only, per the SEAL lens) | integration suite (time-lock), weekly | F10 |
-| nft-gate decrypt with a real pass (and negatives) | no | none yet: needs a funded testnet wallet and a test gate (maintainer-only; Section D pre-mainnet) | F10 |
+| nft-gate decrypt with a real pass (and negatives) | no | `tests/integration/nft-gate.integration.test.ts` — maintainer-run with a funded key (`SEAL_LIVE_KEY_FILE`), run twice on 2026-10-22; not in the weekly CI job (a funded key is not a CI secret) | F10, F27 |
 | `encrypt` namespace binding | yes | `tests/controller.test.ts` | F10 |
 | ABI of the published package | arity table | live drift, weekly | F10, F18 |
 | `SealedContentPublished` layout vs chain | self-encoded | live decode, weekly | — |
@@ -1211,9 +1235,10 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 - [x] original-id (namespace) and published-at (approve target) recorded and used — F21; `encrypt` binding
   pinned by a hermetic test (F10)
 - [x] threshold ≤ configured weight; SessionKey cleared on account switch and disconnect (seal-ui)
-- [ ] live decrypt round trip **with negatives** (wrong gate, exhausted/missing pass, too early,
-  wrong namespace, paused gate) — F10. DEFERRED, maintainer-only: needs a funded testnet wallet holding a
-  pass for a test gate; only "too early" runs live today.
+- [x] live decrypt round trip **with negatives** (wrong gate, exhausted/missing pass, too early,
+  wrong namespace, paused gate) — F10: `tests/integration/nft-gate.integration.test.ts`, 8 tests, passed twice on 2026-10-22 against the public
+  testnet committee (maintainer-run; repeat before each release of this package or of seal-policies-sui). "Wrong namespace" is refused by the controller
+  before any request and shown to abort in the dry run; a key server is not asked.
 - [x] live suite in CI on a schedule — weekly `live.yml` (F10, F18)
 - [x] npm package with provenance; shared-dependency matrix aligned — 0.0.19 and 0.0.20, SLSA v1 attestations (0.0.20 released 2026-10-18, `dist.attestations` checked)
 
@@ -1336,7 +1361,7 @@ Status at 2026-10-09 in brackets.
 - **S4** MAY coalesce concurrent SessionKey mints and expose `hasSession(address)` for UIs (F9). [Coalescing
   done; `hasSession` not added.]
 - **S5** SHOULD add the live nft-gate negatives to the integration suite and schedule it (F10). [Scheduled:
-  done. The nft-gate negatives: DEFERRED, maintainer-only.]
+  done. The nft-gate negatives: done 2026-10-22 as a maintainer-run test; not scheduled in CI because it needs a funded key.]
 - **S6** MAY warn at construction when `threshold === 1` or when `verifyKeyServers` is disabled by a
   mixed configuration (F11, F13). [Not added; `verifiesKeyServers` exposes the setting.]
 
@@ -1344,11 +1369,11 @@ Status at 2026-10-09 in brackets.
   and a retired package version from a bad identity (seal-policies-sui dev-guide rule 5, OQ5). [Done in 0.0.22, commit pending:
   `src/aborts.ts` (`POLICY_ABORTS`, `describePolicyAbort`, `parseMoveAbort`, `classifyPolicyAbort`), `nft_gate` 4 `E_GATE_PAUSED` and `config` 1
   `E_WRONG_VERSION` plus the other codes of the four modules; `tests/aborts.test.ts` (8 tests, and 4 that compare the table with the Move
-  constants when seal-policies-sui is next to this repo). Not verified live: what text a key server returns to the client for a refused dry run.]
+  constants when seal-policies-sui is next to this repo). Verified live 2026-10-22 (F27): a key server's refusal carries no abort text (`NoAccessError` / `InvalidParameterError`), so the map applies to the approve PTB simulated by the client, not to the error of `decrypt`; OQ5.]
 
 ## Open questions
 
-All four are answered; the answers are decisions, not open items.
+OQ1–OQ4 are answered (decisions, not open items); OQ5 is open.
 
 - **OQ1** Discovery authenticity (F6): (a) client-side publisher filtering, (b) the curated on-chain
   `publish_curated` from `seal-policies-sui` OQ4, (c) content signing in the manifest. **Answered: (a).**
@@ -1360,6 +1385,11 @@ All four are answered; the answers are decisions, not open items.
 - **OQ3** Support legacy `seal_policies` namespaces (F16)? **Answered: no**; superseded packages are
   republished, not migrated.
 - **OQ4** Ship `.d.ts` declarations like the sibling SDKs? **Answered: yes**, since 0.0.16 (F18).
+- **OQ5** (new, F27) Should the library explain a refusal itself? A key server's answer carries no abort, but the approve PTB simulated as the requester does. Options:
+  (a) leave it to the caller (what the README documents now); (b) `SealController.explainRefusal(type, params, id, { address })` that builds the same approve PTB,
+  simulates it and returns `classifyPolicyAbort`'s answer or the ownership error, for the caller to run after a `NoAccessError`; (c) do it inside `decrypt`
+  and wrap the error. **Recommendation: (b)**: it is opt-in (one extra RPC only when the caller asks), keeps `decrypt`'s errors unchanged, and uses only
+  public APIs; (c) adds an RPC to every failure and changes thrown types. It is new public API, so it waits for the maintainer.
 
 ## Risks
 
@@ -1375,7 +1405,7 @@ All four are answered; the answers are decisions, not open items.
   (F7, F17, F24); a wrapped unlock time is always refused (F8).
 - **Stale discovery:** a stuck indexer is detected from `polledAt` (60 s) and the full node answers (F26). A client clock
   more than 60 s ahead makes every head page look stale, which disables the indexer for that client only.
-- **Live nft-gate coverage:** the decrypt negatives against a real pass are unproven live (F10).
+- **Live nft-gate coverage:** the decrypt negatives against a real pass ran live on 2026-10-22 (F10) and are maintainer-run; a key-server or policy change is caught only when someone runs them (README, `OPERATOR_TASKS.md`).
 - **Shared-SDK fragility:** a single `@mysten/seal` / `@mysten/sui` copy in hosts, held by peer
   dependencies and the dashboard pin.
 
@@ -1451,6 +1481,12 @@ All four are answered; the answers are decisions, not open items.
   - **Done:** `src/aborts.ts` exports `POLICY_ABORTS` (every code of `config`, `nft_gate`, `timelock`, `sealed_content`), `describePolicyAbort(module, code)`, `parseMoveAbort` (the Sui clients' abort message, the older debug form, a structured status, an `Error` and its `cause` chain) and `classifyPolicyAbort(input, { policyPackageIds })`, which refuses an abort from a package that is not the policy package. `nft_gate` 4 is `E_GATE_PAUSED` and `config` 1 is `E_WRONG_VERSION`. README section "Telling aborts apart", CLAUDE.md key-files row, CHANGELOG.
   - **Measured:** vitest 121/121 (12 files; 109 before), `tsc --noEmit` and eslint clean. The table is compared with the Move constants of the sibling checkout (seal-policies-sui `sources/*.move`) in four tests.
   - **Not verified:** what a key server's refusal looks like to the client (the abort text may not reach the caller; the parser then returns undefined and the caller shows a generic refusal). No disposition changes; no finding was opened or closed by this item.
+- 2026-10-22 (live nft-gate round trip with negatives; test and docs only, no `src` change) — Section D live gate run.
+  - **Added:** `tests/integration/nft-gate.integration.test.ts` (8 tests; skips unless `SEAL_TESTNET=1` and `SEAL_LIVE_KEY_FILE` are set), README section "Live nft-gate round trip with negatives", a comment in `live.yml`. It does not run in CI.
+  - **Run:** the maintenance runner `0xbf4bd853…424f` (testnet), twice, 8/8 each (about 55 s, about 0.05 SUI per run). Exploration before it, with digests: gates G1 `DyXgvm3kXkXz6uNMkaEJEKVJv78d6DuCTm71wJEoYH4D` (soulbound, 1 use, pause blocks decryption and access), G2 `Di4fqzfL37QjpV6S7KDJczQZpckn5MEWSbUFms7kHJtK` (transferable), G3 `7hVyPZswbwRTCK8zoXJgPrce74TScCcP2fnnMhKY8HPS`; passes `6rx8Md4qeXQao6E2LvXJgvTSqSUiqCaGvM3Sn2cet7wn`, `7UtMTZE5XXzm3tmBCJSTA8mnX3h5fg1qBgahDagLF6yL`; exhausted by `EgZB68w8y5j4QbwW2GsWnetui9uK4UNYictTezBcTf2D`; paused `61CYonoPifx9t9Du4vQW9mtFk6mhJKP4tysZeBBriYKi` / unpaused `63npSZscbEX53uee6NjyEZAM5TJUnFwTWD6fw7FU2ssk`; frozen transferable pass `HctRUdKKsuvaUggHQirzjbHh5g1vhjorrnef1A5dkJL4`. Committee: the three servers of `timelock.integration.test.ts` (aggregator `seal-aggregator-testnet.mystenlabs.com` and two independent), threshold 2.
+  - **Observed key-server text (answers the 0.0.22 "not verified" note):** a refusal is `NoAccessError: User does not have access to one or more of the requested keys`; a non-owner is `InvalidParameterError: PTB contains an invalid parameter, possibly a newly created object that the FN has not yet seen`. Neither carries the abort. The abort map classified the simulated approve PTB correctly in every case (F27). A first attempt with one controller allowed every later request: the `SealClient` caches fetched keys, so each refusal needs a new controller (documented in the test header and README).
+  - **Dispositions (25 entries):** RESOLVED 18 (adds F10), MITIGATED 2 (F13, F27), ADJUDICATED 2 (F16, F24), Positive 3. New: F27 and OQ5 (recommendation (b), waits for the maintainer). Section D: the live round-trip box is ticked.
+  - **Measured:** `tsc --noEmit`, eslint, vitest 121/121 (unit), integration config 9 passed / 8 skipped without a key. Release: none needed for the test and README (no `src` change); a helper for OQ5 would be 0.0.23.
 
 ## Pre-save consistency checklist (this pass)
 
@@ -1462,3 +1498,4 @@ All four are answered; the answers are decisions, not open items.
 - [x] Executive summary ↔ dispositions and ceiling (no finding open above Low).
 - [x] C.1 counts — tests measured 2026-10-22 (121/121); coverage percentages are the 2026-10-03 figures.
 - [x] Re-verification log entry added (2026-10-03 and 2026-10-09).
+- [x] 2026-10-22 (live run): F10 RESOLVED, F27 and OQ5 added; the Section D live box ticked; C.2, S5, S7 and Risks lines updated; counts 25 entries (RESOLVED 18); log entry added.
