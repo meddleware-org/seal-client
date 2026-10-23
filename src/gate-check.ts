@@ -27,11 +27,11 @@ export async function assertLinkedGate(
   const want = normalizeStructTag(`${normalizeSuiAddress(accessGateOriginalId)}::access_gate::Gate`)
   const have = object.type ? normalizeStructTag(object.type) : undefined
   if (have !== want) {
-    throw new Error(`seal-client: ${gateId} is not a Gate of the linked access_gate package; content sealed to it could never be decrypted.`)
+    throw new Error(`sealed-storage-client: ${gateId} is not a Gate of the linked access_gate package; content sealed to it could never be decrypted.`)
   }
   if (options.requireSoulbound && object.json?.soulbound !== true) {
     throw new Error(
-      `seal-client: gate ${gateId} mints transferable passes; a holder can freeze one into public access. ` +
+      `sealed-storage-client: gate ${gateId} mints transferable passes; a holder can freeze one into public access. ` +
         'Seal to a soulbound gate, or set allowTransferableGates to accept this.',
     )
   }

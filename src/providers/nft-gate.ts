@@ -77,13 +77,13 @@ export function createNftGateProvider(accessGateOriginalId = ''): SealPolicyProv
     verifyId(idBytes, params) {
       // Layout `[32-byte gate id][16-byte nonce]` — anything else cannot have come from buildId.
       if (idBytes.length !== 32 + NONCE_LEN) {
-        throw new Error(`seal-client: nft-gate id must be ${32 + NONCE_LEN} bytes ([gate id][nonce]); got ${idBytes.length}`)
+        throw new Error(`sealed-storage-client: nft-gate id must be ${32 + NONCE_LEN} bytes ([gate id][nonce]); got ${idBytes.length}`)
       }
       const expected = objectIdBytes(params.gateId)
       for (let i = 0; i < 32; i++) {
         if (idBytes[i] !== expected[i]) {
           throw new Error(
-            `seal-client: id/params mismatch — stored id does not match params.gateId (byte ${i} differs). ` +
+            `sealed-storage-client: id/params mismatch — stored id does not match params.gateId (byte ${i} differs). ` +
             `The manifest may be corrupted or the wrong params were supplied.`,
           )
         }

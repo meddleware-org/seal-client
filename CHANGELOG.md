@@ -3,6 +3,12 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.24] - 2026-10-24
+
+### Changed
+
+- Renamed from `seal-client` to `sealed-storage-client` (workspace naming convention, `docs/architecture/ADR-0003-naming.md`). No code change beyond names, paths, hostnames and dependency names; the history below keeps the old names.
+
 ## [0.0.23] - 2026-10-22
 
 ### Added

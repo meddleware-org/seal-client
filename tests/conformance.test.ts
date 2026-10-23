@@ -3,7 +3,7 @@ import { objectIdBytes, u64beBytes, bytesToHex } from '../src/bytes.js'
 import vectors from './conformance-vectors.json' with { type: 'json' }
 
 // These vectors are shared bit-for-bit with the on-chain decode in
-// repos/seal-policies-sui/tests/{nft_gate,timelock}_tests.move. If either side changes an identity
+// repos/sealed-storage-sui/tests/{nft_gate,timelock}_tests.move. If either side changes an identity
 // byte layout, one of these assertions (or the matching Move test) fails — which is the point.
 describe('identity byte-layout conformance vectors', () => {
   it('nft-gate: full 32-byte gate id maps to the expected prefix', () => {

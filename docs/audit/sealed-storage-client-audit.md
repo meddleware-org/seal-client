@@ -1,7 +1,7 @@
-# Security Audit — `seal-client`
+# Security Audit — `sealed-storage-client`
 
 **Classification:** Internal security review (initial audit, re-verified 2026-10-09 — awaiting external review)
-**Project:** seal-client (`@meddleware/seal-client`). The client half of Sealed Storage:
+**Project:** sealed-storage-client (`@meddleware/sealed-storage-client`). The client half of Sealed Storage:
   - a pluggable Seal policy registry (`nft-gate`, `time-lock` providers);
   - `SealController` (threshold encrypt/decrypt over a key-server committee, SessionKey lifecycle);
   - the `SealedManifest` guard;
@@ -22,19 +22,19 @@ scoped, not a token this package issues), no signing scripts and no image.
 
 **Deployment status:**
 
-- npm `@meddleware/seal-client` **0.0.20** (`latest`, published 2026-10-18T09:06Z), from tag `v0.0.20` =
+- npm `@meddleware/sealed-storage-client` **0.0.20** (`latest`, published 2026-10-18T09:06Z), from tag `v0.0.20` =
   `9ef93f9` (code commit `48fd9d6`; the later commit only records the hash in this audit). It carries an SLSA v1
   provenance attestation (`dist.attestations`, checked with `npm view` 2026-10-18). 0.0.19 (tag `v0.0.19` =
   `3527c58`, 2026-10-09) was the version of the 2026-10-09 pass; the Dependabot group bump `b4a42ea` shipped with 0.0.20.
 - Working tree 2026-10-22: version **0.0.23** (local commit, not tagged or published) adds `SealController.explainRefusal` (F27, OQ5).
 - Working tree 2026-10-22: version **0.0.22** (local commit, not tagged or published) adds the `seal_policies` abort
-  map (S7 below; seal-policies-sui OQ5). 0.0.21 was released in between if it has been tagged by then; this line records the working tree.
+  map (S7 below; sealed-storage-sui OQ5). 0.0.21 was released in between if it has been tagged by then; this line records the working tree.
 - Working tree 2026-10-20: version **0.0.21** (local commit, not tagged or published) raises the
   `@meddleware/access-gate-client` dependency to `^0.0.10` and pins the stale-head-page fallback (F26). Its lockfile
   keeps the 0.0.9 entry until access-gate-client 0.0.10 is published and `npm install` is run (the tests ran against a
   local link of the 0.0.10 working tree).
-- It is consumed at `^0.0.20` (bumped 2026-10-18, verified in `repos/*/package.json`) by seal-ui, the docs and
-  dev sites and sui-indexer; it was `^0.0.19` for seal-ui and docs on 2026-10-09.
+- It is consumed at `^0.0.20` (bumped 2026-10-18, verified in `repos/*/package.json`) by sealed-storage-ui, the docs and
+  dev sites and sui-indexer; it was `^0.0.19` for sealed-storage-ui and docs on 2026-10-09.
 - It targets `seal_policies` on testnet only (no mainnet publication exists): `0x0c8f7349…` (republished
   2026-10-09, links `access_gate` `0xd7ddaa94…`). Mainnet publication and the Seal mainnet key-server
   terms are maintainer items (`OPERATOR_TASKS.md` "Mainnet release custody", "Mainnet Seal key servers").
@@ -70,7 +70,7 @@ renumber the new findings when relocating it, and leave a pointer stub at the co
 - `"./deployments"` → `src/deployments.ts`
 
 `files` holds `src`, `dist`, `CHANGELOG.md` and `SECURITY.md`.
-**Runtime targets:** browsers (via Vite in seal-ui and the dashboard) and Node (integration tests).
+**Runtime targets:** browsers (via Vite in sealed-storage-ui and the dashboard) and Node (integration tests).
 `engines.node` is `>=24` (fleet decision D41; F18).
 **Peer dependencies:** `@mysten/seal` `^1.4.18` and `@mysten/sui` `^2.33.2` (both also
 devDependencies). The runtime dependency is `@meddleware/access-gate-client` `^0.0.10` (0.0.21; `^0.0.9` at 0.0.20, `^0.0.8` at 0.0.19).
@@ -81,7 +81,7 @@ through structural client types, plus an optional HTTPS read-indexer (display on
 **Seal SDK:** `@mysten/seal` `^1.4.18` (installed 1.4.19).
 
 **Key-server mode / servers / threshold.** These are chosen by the consumer and validated here.
-Current consumer defaults (`seal-ui/src/config.ts`):
+Current consumer defaults (`sealed-storage-ui/src/config.ts`):
 
 - **testnet:** a Mysten committee behind `seal-aggregator-testnet.mystenlabs.com`, plus Mysten Open
   servers `0x73d05d62…db75` and `0xf5d14a81…23c8`, at **t = 2**.
@@ -94,13 +94,13 @@ Current consumer defaults (`seal-ui/src/config.ts`):
 `false` for **all** of them (F13).
 **checkShareConsistency:** defaults to `true`.
 **Policy package (`seal_policies`), testnet** (from `./deployments`, generated from
-`@meddleware/seal-policies-sui@0.0.7`):
+`@meddleware/sealed-storage-sui@0.0.7`):
 
 - original-id = published-at = `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d`
   (v1; links `access_gate` `0xd7ddaa94b74330979b2b618fc81206d160a264f1c9ca148a77fa2144301388c9`);
 - `PolicyConfig` = `0xee0403ba15c250223527150d147f29bedfb1ec46bb2282c341be462ff0ad7d1a`;
 - UpgradeCap **live** with the deploy key until the pre-mainnet custody process (see
-  `seal-policies-sui-audit.md` B.3; `OPERATOR_TASKS.md` "Mainnet release custody");
+  `sealed-storage-sui-audit.md` B.3; `OPERATOR_TASKS.md` "Mainnet release custody");
 - the superseded `0x61c4aa…` package is immutable (UpgradeCap burned 2026-10-09).
 
 **On-chain packages consumed:**
@@ -110,14 +110,14 @@ Current consumer defaults (`seal-ui/src/config.ts`):
 | testnet | `seal_policies` | `0x0c8f7349…773d` | same | `PolicyConfig` `0xee0403ba…7d1a` | `src/deployments.ts`, generated by `scripts/gen-deployments.mjs` and checked in CI |
 | testnet | `access_gate` (suggestions, gate check, operator lookup; via access-gate-client) | caller-supplied (`accessGateDeployment(net).originalId` = `0xd7ddaa94…88c9`) | — | — | `@meddleware/access-gate-client/deployments` |
 
-**Location:** `seal-client/docs/audit/seal-client-audit.md`. This is a new directory; see the
+**Location:** `sealed-storage-client/docs/audit/sealed-storage-client-audit.md`. This is a new directory; see the
 finding-IDs note above for the corpus file.
 
 ---
 
 ## Executive summary
 
-`@meddleware/seal-client` is 1,320 lines in 13 modules (0.0.19; it was 1,082 lines in 11 modules at the first pass).
+`@meddleware/sealed-storage-client` is 1,320 lines in 13 modules (0.0.19; it was 1,082 lines in 11 modules at the first pass).
 
 **What holds:**
 
@@ -133,7 +133,7 @@ finding-IDs note above for the corpus file.
   - The threshold is validated against total weight.
   - Share-consistency checking is on.
   - SessionKeys are in memory, scoped to address and package, and cleared by the consumer on
-    disconnect or account switch (seal-ui `seal.ts:95-104`).
+    disconnect or account switch (sealed-storage-ui `seal.ts:95-104`).
   - The DEM key `@mysten/seal` returns from `encrypt` is discarded.
 - **Discovery.** Events decode from BCS at the exact event type. Look-alike packages are rejected.
   Indexer reads use access-gate-client's shared reader.
@@ -143,7 +143,7 @@ finding-IDs note above for the corpus file.
 **Measured (2026-10-09, 0.0.19):**
 
 - **Hermetic checks:** **97/97** unit tests in 10 files (77 at the first pass). tsc, eslint,
-  `npm audit --audit-level=high` (0) and `check:deployments` (matches `seal-policies-sui@0.0.7`) are
+  `npm audit --audit-level=high` (0) and `check:deployments` (matches `sealed-storage-sui@0.0.7`) are
   clean. Coverage was not re-measured (the coverage plugin is not installed); the 2026-10-03 figures
   (95.13% statements, 91.25% branches, 96.62% lines) are for the 77-test suite.
 - **Live checks:** `SEAL_TESTNET=1 npm run test:integration` passes (3 files, 9 tests: ABI drift of every
@@ -174,7 +174,7 @@ What the first pass found, for the record:
    - A spoofed pointer therefore **decrypts successfully** for pass holders and shows attacker
      content inside the gated UI, with every appearance of official content.
    - Nothing in the package says Seal gives confidentiality but not authenticity.
-   - seal-ui lists pointers unfiltered today.
+   - sealed-storage-ui lists pointers unfiltered today.
 2. **Low:**
    - **F7:** `encrypt` does not validate the gate. An empty or `0x` id, a non-existent id, or a gate
      of a superseded `access_gate` package all produce content no one can ever decrypt.
@@ -186,14 +186,14 @@ What the first pass found, for the record:
      original-id equals published-at, so even the live round trip cannot catch a regression. The live
      suite has no nft-gate case and none of the negatives the SEAL lens requires.
    - **F11:** the README recommends a mainnet setup (one aggregator committee, t = 1, a browser API
-     key) that contradicts ADR-0002, this package's own CLAUDE.md, and seal-ui.
+     key) that contradicts ADR-0002, this package's own CLAUDE.md, and sealed-storage-ui.
    - **F12:** `sealPoliciesDeployment('constructor')` returns a prototype member.
 3. **Info (F13–F20):**
    - `verifyKeyServers` is all-or-nothing;
    - manifest `id` and `params` are only shape-checked;
    - indexer and event robustness is inherited from access-gate-client (stale head pages fall back: F26);
    - content under superseded namespaces cannot be decrypted;
-   - client-side options for the frozen-pass issue (seal-policies-sui F16);
+   - client-side options for the frozen-pass issue (sealed-storage-sui F16);
    - packaging and CI details;
    - the registry replaces providers silently;
    - documentation drift.
@@ -201,7 +201,7 @@ What the first pass found, for the record:
 **Posture:** the cryptographic orchestration is careful and defence-in-depth checks are in place. The
 edge work the first pass listed is done:
 
-- discovery can be authenticated by publisher (F6), and seal-ui uses operator-only listing by default;
+- discovery can be authenticated by publisher (F6), and sealed-storage-ui uses operator-only listing by default;
 - inputs that seal content irrecoverably or openly are rejected (F7, F8, F17);
 - the SessionKey margin counts from key creation (F9);
 - `encrypt` is covered by hermetic tests that catch a namespace regression (F10).
@@ -216,7 +216,7 @@ log).
 ## Threat model / trust boundaries
 
 **Primary trust anchor:** the Seal key-server committee evaluating the on-chain `seal_policies`
-package (`seal-policies-sui-audit.md`). This package's job is to bind data to the right namespace and
+package (`sealed-storage-sui-audit.md`). This package's job is to bind data to the right namespace and
 identity, to ask for keys only for the identity the caller expects, and to keep the SessionKey on the
 device.
 
@@ -230,7 +230,7 @@ device.
 | Requester + wallet | signs the SessionKey personal message | the key server evaluates under the signer's address; one signature authorises key retrieval for **all** identities in the package for the TTL | address- and package-scoped cache; `clearSession`; margin (F9) |
 | Key server's full node | chain view for the dry run | stale state; clock skew for time locks | out of scope (policy audit F26) |
 | Storage (Walrus) | holds ciphertext | public ciphertext; substitution | header identity/package check (SEAL-M2); AEAD (AES-256-GCM, the SDK default) |
-| **Publishers of discovery pointers** | label, blob id, seal id under any gate | spoofed pointers to attacker-encrypted content that decrypts successfully | gate-id filter plus the `publishers` filter and `gateOperators` (F6); the library default is unfiltered, seal-ui lists the operator's pointers only |
+| **Publishers of discovery pointers** | label, blob id, seal id under any gate | spoofed pointers to attacker-encrypted content that decrypts successfully | gate-id filter plus the `publishers` filter and `gateOperators` (F6); the library default is unfiltered, sealed-storage-ui lists the operator's pointers only |
 | **Anyone** | encrypt to any identity (public keys only) | content under a gate's namespace that the gate's operator never published | cannot be prevented (public keys); authorship comes from the publisher filter, and `SECURITY.md` states that Seal does not authenticate (F6) |
 | Consuming app | registry contents, controller config, manifests | can register a hostile provider; supplies the committee | `assertApproveOnly` limits what a provider can put in the approve PTB; `register` refuses a silent replace (F19); `SECURITY.md` scopes app decisions out |
 
@@ -251,7 +251,7 @@ device.
 | --- | --- | --- |
 | Dependency authors | `@meddleware/access-gate-client` at runtime; SDK peers; ~150 dev packages | lockfile; `npm audit --audit-level=high` in CI and publish |
 | Registry | tarballs | lockfile integrity; provenance on publish |
-| `@meddleware/seal-policies-sui` npm package | `Published.toml` / `deployments.json` → every ID | exact devDependency pin `0.0.7` (with provenance); HEX_ID validation; `check:deployments` in CI |
+| `@meddleware/sealed-storage-sui` npm package | `Published.toml` / `deployments.json` → every ID | exact devDependency pin `0.0.7` (with provenance); HEX_ID validation; `check:deployments` in CI |
 | Untrusted inputs: manifests, ciphertext bytes, event BCS, indexer bodies | shapes and sizes | `parseSealedManifest(raw, registry)` (hex id, registered type, provider-narrowed params, F14); `EncryptedObject.parse` + identity/package checks; BCS layout; shared indexer reader with skip-and-count (F15) |
 | Embedding host | globals, SDK copies, registry | peer dependencies (one SDK copy); `SECURITY.md` scope |
 
@@ -276,14 +276,14 @@ Critical / High / Medium / Low / Info / Positive (unchanged across the corpus).
 
 **Cross-repo evidence (read-only):**
 
-- `seal-policies-sui` at `a03a532` (0.0.7; first pass: `0726070`): Move signatures, identity decoders,
+- `sealed-storage-sui` at `a03a532` (0.0.7; first pass: `0726070`): Move signatures, identity decoders,
   conformance literals, `Published.toml` / `deployments.json`.
-- `seal-ui` (`src/config.ts` committee defaults; `src/seal.ts` `clearSession` wiring;
+- `sealed-storage-ui` (`src/config.ts` committee defaults; `src/seal.ts` `clearSession` wiring;
   `src/sealed-content.ts` operator-filtered discovery, `src/manifest-guard.ts`).
 - `access-gate-client` 0.0.9 (`fetchOwnedGates`, `fetchGate`, `readIndexerEvents`).
 
 **Out of scope:** Seal and `@mysten/seal` internals; the key servers; the Move package (own audit);
-seal-ui (own audit; consumer facts cited); the read-indexer service.
+sealed-storage-ui (own audit; consumer facts cited); the read-indexer service.
 
 **Environment / commands (2026-10-09, Node 24.13.0, existing `node_modules`; the first pass was
 2026-10-03 on Node 22.22.2):**
@@ -294,11 +294,11 @@ seal-ui (own audit; consumer facts cited); the read-indexer service.
 | `npx vitest run --coverage` | not re-run: the coverage plugin is not installed. First-pass figures (77 tests): 95.13% statements, 91.25% branches, 95.23% functions, 96.62% lines; `controller.ts:101-109` (`encrypt`) was uncovered then and is covered now (F10) |
 | `npx tsc --noEmit` / `npx eslint .` | clean / clean |
 | `npm audit --audit-level=high` | 0 vulnerabilities |
-| `npm run check:deployments` | `src/deployments.ts matches @meddleware/seal-policies-sui@0.0.7` |
+| `npm run check:deployments` | `src/deployments.ts matches @meddleware/sealed-storage-sui@0.0.7` |
 | `SEAL_TESTNET=1 npm run test:integration` | **3 files, 9 tests passed** (ABI drift against the new package, `SealedContentPublished` decode, time-lock round trip over the independent servers) |
 | `npm pack --dry-run` | 31 files, 29.9 kB: `src/**` (13), `dist/**` declarations (13), `CHANGELOG.md`, `README.md`, `SECURITY.md`, `LICENSE`, `package.json`. No tests or scripts. |
 | `npm ls @mysten/sui @mysten/seal @mysten/bcs @meddleware/access-gate-client` | one copy each (2.35.0 / 1.4.19 / 2.1.2 / 0.0.8), deduped through access-gate-client |
-| `npm view @meddleware/seal-client@0.0.19` | SLSA v1 provenance attestation present; `@meddleware/seal-policies-sui@0.0.7` also attested (2026-10-18: `latest` is 0.0.20, published 2026-10-18T09:06Z, attestation present) |
+| `npm view @meddleware/sealed-storage-client@0.0.19` | SLSA v1 provenance attestation present; `@meddleware/sealed-storage-sui@0.0.7` also attested (2026-10-18: `latest` is 0.0.20, published 2026-10-18T09:06Z, attestation present) |
 | First-pass scratch probe (2026-10-03) | confirmed F7, F8, F12 and F14 against 0.0.15; each is now pinned by a hermetic test (see the findings) |
 
 **Working tree:** clean apart from the untracked `docs/` directory holding this audit; `node_modules/` and `dist/` are git-ignored.
@@ -360,7 +360,7 @@ the exact 48-byte layout. Moved lines: the former `controller.ts:128` is now `:1
 - README "Sealed-content discovery";
 - `SECURITY.md` (no authenticity statement).
 
-Consumer: seal-ui `src/sealed-content.ts` lists them unfiltered.
+Consumer: sealed-storage-ui `src/sealed-content.ts` lists them unfiltered.
 
 **Issue:**
 
@@ -393,7 +393,7 @@ bounded on-chain (string limits) but not in number.
 4. Optionally, validate a pointer's `sealId` prefix against its `gateId` for nft-gate content, and
    drop inconsistent pointers.
 5. Add tests for each.
-6. Bump seal-ui in the same release.
+6. Bump sealed-storage-ui in the same release.
 
 **Remediation / evidence (2026-10-09):**
 
@@ -406,8 +406,8 @@ bounded on-chain (string limits) but not in number.
   wallet.
 - `SECURITY.md` invariant 4 and the README ("Seal gives confidentiality, not authenticity") state that a
   successful decrypt proves only that an item was sealed to the gate's namespace.
-- seal-ui `src/sealed-content.ts` lists operator-only pointers by default (`gateOperators`); `includeOthers`
-  is an explicit "every publisher" view. It consumes seal-client `^0.0.20` (was `^0.0.19`).
+- sealed-storage-ui `src/sealed-content.ts` lists operator-only pointers by default (`gateOperators`); `includeOthers`
+  is an explicit "every publisher" view. It consumes sealed-storage-client `^0.0.20` (was `^0.0.19`).
 - Tests: `tests/sealed-content.test.ts` "lists only pointers published by the given addresses, on the full
   node and the indexer" and "compares publishers normalised, and lists everything when no filter is given".
 - Remediation item 4 (drop a pointer whose `sealId` prefix differs from its `gateId`) was not implemented:
@@ -452,7 +452,7 @@ bounded on-chain (string limits) but not in number.
 1. In `encrypt` for nft-gate, or as a provider pre-check, require a non-empty id.
 2. Read the object and require its type to equal `<linked access_gate original id>::access_gate::Gate`.
 3. Record that linked original id in `./deployments`. The generator can read it from the pinned
-   `access_gate` dependency, or `seal-policies-sui` can add it to `deployments.json`.
+   `access_gate` dependency, or `sealed-storage-sui` can add it to `deployments.json`.
 4. Make `suggest()` use it rather than a caller-supplied id.
 5. Fail encryption on mismatch.
 6. Add tests for an empty id, a non-gate object and a look-alike-package gate.
@@ -465,7 +465,7 @@ bounded on-chain (string limits) but not in number.
   requires its type to be `<access_gate original id>::access_gate::Gate` (`gate-check.ts`
   `assertLinkedGate`, normalised full-type comparison; test "reads the gate first and refuses one that is
   not a Gate of the linked access_gate package"). A typo, a non-gate object and a gate of a superseded
-  `access_gate` package (`0xa55789…` and older) are refused before anything is sealed. seal-ui passes
+  `access_gate` package (`0xa55789…` and older) are refused before anything is sealed. sealed-storage-ui passes
   `accessGateOriginalId` (`src/seal.ts`).
 - Not implemented: remediation items 3 and 4 (record the linked `access_gate` id in `./deployments`;
   derive `suggest()` from it). The id is still caller-supplied, and the generator does not know it. A wrong
@@ -494,7 +494,7 @@ bounded on-chain (string limits) but not in number.
 
 - Any input path that produces a huge or wrapped value turns a time lock into no lock. This is a
   fail-open encoding error for a confidentiality primitive.
-- The seal-ui datetime input bounds this in practice; library callers have no guard.
+- The sealed-storage-ui datetime input bounds this in practice; library callers have no guard.
 
 **Remediation / evidence:**
 
@@ -598,8 +598,8 @@ share one mint and one wallet prompt". `SECURITY.md` invariant 2 now holds as wr
   without one, so the weekly job is unchanged) and covers: the positive round trip; a non-owner (`InvalidParameterError`); a pass of another gate
   (`E_WRONG_GATE`); an exhausted pass (`E_EXHAUSTED`); a paused gate whose policy blocks decryption (`E_GATE_PAUSED`), refused and then resumed; an
   identity not namespaced to the gate (`E_ID_NOT_NAMESPACED`: refused by the controller before any request, and the dry run aborts); a time-lock that
-  has not opened (`E_TOO_EARLY`); and the frozen transferable pass (seal-policies-sui F16: a stranger decrypts). It is maintainer-run by design:
-  a funded key must not be a CI secret (README, `OPERATOR_TASKS.md`). Digests: the seal-policies-sui audit log entry of 2026-10-22.
+  has not opened (`E_TOO_EARLY`); and the frozen transferable pass (sealed-storage-sui F16: a stranger decrypts). It is maintainer-run by design:
+  a funded key must not be a CI secret (README, `OPERATOR_TASKS.md`). Digests: the sealed-storage-sui audit log entry of 2026-10-22.
 
 ### F11 — The README's mainnet guidance contradicts ADR-0002 and the package's own invariants
 
@@ -613,7 +613,7 @@ share one mint and one wallet prompt". `SECURITY.md` invariant 2 now holds as wr
 
 - `CLAUDE.md`: "an API key in a browser bundle is public: MeddleWare's apps use keyless servers only
   (workspace ADR-0002 — mainnet is three Open-mode servers at threshold 2)";
-- seal-ui's mainnet defaults (three independent operators, t = 2);
+- sealed-storage-ui's mainnet defaults (three independent operators, t = 2);
 - the SEAL lens (confidentiality beyond one operator needs ≥ 2 independent operators).
 
 Following the README gives:
@@ -634,7 +634,7 @@ weaker configuration than the one the project chose.
 **Remediation / evidence (2026-10-09):** the README paragraph (now `README.md:73-80`) follows ADR-0002:
 an aggregator-backed committee counts as one server, MeddleWare's apps use independent keyless servers at
 `threshold: 2` (three Open-mode servers on mainnet: Overclock, NodeInfra, H2O Nodes), and an API key in a
-bundle is public. It matches `CLAUDE.md` and seal-ui's defaults.
+bundle is public. It matches `CLAUDE.md` and sealed-storage-ui's defaults.
 
 ### F12 — `sealPoliciesDeployment(network)` returns prototype members for keys like `constructor`
 
@@ -663,7 +663,7 @@ resolve Object prototype members as networks" (`constructor`, `toString`, `__pro
 **Issue:**
 
 - The SDK option is global. The default turns it off when *any* server has an `aggregatorUrl`.
-- seal-ui's testnet default (one aggregator plus two independent Mysten servers) therefore runs with
+- sealed-storage-ui's testnet default (one aggregator plus two independent Mysten servers) therefore runs with
   no URL verification for the two independent servers.
 - Mainnet defaults (no aggregator) keep it on.
 
@@ -679,7 +679,7 @@ configurations. Today this is testnet only.
 **Remediation / evidence (2026-10-09):** `SealController.verifiesKeyServers` exposes the effective setting,
 and the README, `SECURITY.md` ("Key servers") and the config docs state that a mixed configuration runs
 without URL verification for the independent servers. A construction-time warning was not added (the
-S6 option). seal-ui's testnet default (aggregator plus two independent servers) is still mixed and
+S6 option). sealed-storage-ui's testnet default (aggregator plus two independent servers) is still mixed and
 therefore unverified; the mainnet default (three independent servers, no aggregator) verifies. Revisit if
 `@mysten/seal` gains per-server verification.
 
@@ -713,7 +713,7 @@ registry (`parseSealedManifest(raw, registry)`), `policyType` must be registered
 and keeps only known keys (`__proto__` is dropped). Tests: `tests/manifest.test.ts` "requires the identity
 to be even-length hex", "with a registry: checks the policy type and lets the provider validate and narrow
 the params", "drops unknown params keys (including __proto__) when a provider narrows them", "accepts a
-time-lock manifest, which has no params to check". seal-ui's `manifest-guard.ts` passes its registry.
+time-lock manifest, which has no params to check". sealed-storage-ui's `manifest-guard.ts` passes its registry.
 Without a registry the guard is still shape-only plus hex `id`, by design.
 
 ### F15 — Discovery robustness inherited from access-gate-client
@@ -756,7 +756,7 @@ packages); `SealedManifest` (no package field).
 - The ids are not exported, and the manifest does not record the namespace, so an app cannot route
   such content.
 - CHANGELOG 0.0.11 acknowledges this.
-- `seal-policies-sui`'s overview says such content "still decrypts".
+- `sealed-storage-sui`'s overview says such content "still decrypts".
 
 **Remediation / evidence:**
 
@@ -771,7 +771,7 @@ is `0x0c8f7349…`, so no `legacy` deployments table or manifest `namespace` fie
 The README's `describeCiphertext` + `sealedUnderServers` flow still re-seals content onto new servers
 under the current package.
 
-### F17 — No client-side mitigation for frozen transferable passes (`seal-policies-sui-audit.md` F16)
+### F17 — No client-side mitigation for frozen transferable passes (`sealed-storage-sui-audit.md` F16)
 
 **Severity:** Info here (Medium in the policy audit)   **Disposition:** RESOLVED (0.0.18, `f8d6a13`; decision: soulbound-only sealing; the check is opt-in, F24)
 **Where:** `src/providers/nft-gate.ts` (seals to any gate, transferable or soulbound, without notice).
@@ -793,14 +793,14 @@ the republished `access_gate` makes a gate's pass kind immutable (E15/E16). Test
 "refuses a gate that mints transferable passes (a holder can freeze one into public access)" and "seals to
 a soulbound gate, and to a transferable one only when asked to". Documented in the README and `SECURITY.md`
 ("Seal to soulbound gates"). The `seal_policies` side of this issue is tracked in
-`seal-policies-sui-audit.md`.
+`sealed-storage-sui-audit.md`.
 
 ### F18 — Packaging and CI details
 
 **Severity:** Info   **Disposition:** RESOLVED (0.0.16–0.0.17; `engines.node >=24` added in 0.0.20)
 **Where:** `package.json`; `.github/workflows/*.yml`.
 
-- **No declarations.** No `.d.ts` and no `types` condition, unlike nft-gate-client and
+- **No declarations.** No `.d.ts` and no `types` condition, unlike access-gate-gateway-client and
   access-gate-client (declaration-only builds). Consumers must type-check the shipped source with
   compatible compiler settings. Acceptable for Vite consumers; inconsistent across the workspace.
 - **`SECURITY.md` not shipped.** It is not in `files`, so the trust-assumptions statement does not
@@ -918,7 +918,7 @@ citations of invariants 1, 2 and 4 are unchanged; no test pins documentation tex
   - are memory-only and never exported;
   - have a TTL ≥ 2 minutes (the SDK caps the maximum), with the early-expiry margin counted from key creation (F9);
   - are scoped to address and package;
-  - can be cleared with `clearSession`, which seal-ui calls on disconnect and account switch.
+  - can be cleared with `clearSession`, which sealed-storage-ui calls on disconnect and account switch.
 - Nonces come from `crypto.getRandomValues`.
 
 ### F23 — Positive: IDs, discovery decoding and release chain
@@ -926,7 +926,7 @@ citations of invariants 1, 2 and 4 are unchanged; no test pins documentation tex
 **Severity:** Positive
 
 - **Generated IDs.** `./deployments` is generated from the exactly pinned, provenance-attested
-  `@meddleware/seal-policies-sui@0.0.7`, with HEX_ID validation and `check:deployments` in CI and in
+  `@meddleware/sealed-storage-sui@0.0.7`, with HEX_ID validation and `check:deployments` in CI and in
   the publish verification.
 - **Exact event decoding.** Events decode from BCS at the exact normalised type, and look-alike
   packages are rejected (test).
@@ -953,11 +953,11 @@ citations of invariants 1, 2 and 4 are unchanged; no test pins documentation tex
 
 **Impact:** a library caller that skips the option can still seal content nobody can decrypt (a wrong or
 superseded gate) or content that a transferable-pass holder can open to everyone. The caller's app decides
-this; the project's own app (seal-ui) configures the option from the `access_gate` deployment.
+this; the project's own app (sealed-storage-ui) configures the option from the `access_gate` deployment.
 
 **Remediation / evidence:** ADJUDICATED. `encrypt` needs only the key servers' public keys today; making
 the full-node read mandatory would add a dependency on a full node to every nft-gate encryption. The option and its effect are documented (README, `SECURITY.md`, config docs).
-Revisit if a consumer other than seal-ui appears: a `requireGateCheck` switch that throws when the option
+Revisit if a consumer other than sealed-storage-ui appears: a `requireGateCheck` switch that throws when the option
 is missing would close the gap without making the read the default.
 
 ### F25 — `gateOperators` has no hermetic test
@@ -967,9 +967,9 @@ is missing would close the gap without making the read the default.
 
 **Issue:**
 
-- `gateOperators` is the F6 remediation helper and seal-ui's default discovery path. The unit suite does not
+- `gateOperators` is the F6 remediation helper and sealed-storage-ui's default discovery path. The unit suite does not
   call it: the publisher filter is tested with literal addresses (`tests/sealed-content.test.ts`), and
-  seal-ui's tests mock the function.
+  sealed-storage-ui's tests mock the function.
 - The `fetchGate` read it relies on is tested in access-gate-client, but this wrapper's own behaviour
   (throws for a non-`Gate`, de-duplicates and normalises, merges `extra`) is unpinned.
 
@@ -997,7 +997,7 @@ operator's pointer and drops a rogue publisher's. Shipped in 0.0.20.
 **Issue:**
 
 - sui-indexer stamps head pages with `polledAt`. `listSealedContent` fell back to the full node on errors and
-  timeouts only, so an indexer with a stuck ingest kept answering `200` and seal-ui listed frozen pointers
+  timeouts only, so an indexer with a stuck ingest kept answering `200` and sealed-storage-ui listed frozen pointers
   until it recovered (F15's reader fixes did not cover freshness).
 
 **Impact:** stale discovery (new pointers missing) for as long as an ingest failure lasts. Display only: decryption
@@ -1056,7 +1056,7 @@ The README states this and `tests/integration/nft-gate.integration.test.ts` does
 | I9 | **No key material or plaintext persisted or logged** | controller | review (DEM key discarded; no logging) | HOLDS (code-only) |
 | I10 | **Deployment IDs only from the published records; unknown networks throw** | generator + `deployments.ts` (`Object.hasOwn`) | `check:deployments`; `deployments` tests incl. prototype keys | HOLDS (F12) |
 | I11 | **Events decoded exactly; look-alikes rejected** | `parseSealedContentEvent` | sealed-content tests | HOLDS |
-| I12 | **Discovery is display-only; callers can restrict it to trusted publishers** | `listSealedContent({ publishers })`, `gateOperators` (`operators.ts`) | publisher-filter tests in `sealed-content.test.ts`; `tests/operators.test.ts` pins `gateOperators` (F25) | HOLDS — the library default is unfiltered by design (F6); seal-ui lists operator-only |
+| I12 | **Discovery is display-only; callers can restrict it to trusted publishers** | `listSealedContent({ publishers })`, `gateOperators` (`operators.ts`) | publisher-filter tests in `sealed-content.test.ts`; `tests/operators.test.ts` pins `gateOperators` (F25) | HOLDS — the library default is unfiltered by design (F6); sealed-storage-ui lists operator-only |
 | I13 | **Manifest validated before use** | `parseSealedManifest(raw, registry)` | manifest tests | HOLDS — hex `id`; with a registry, registered type and provider-narrowed `params` (F14) |
 | I14 | **ABI coupling has a drift check** | `tests/abi-table.ts` + live drift test | offline completeness test; live drift (weekly `live.yml`) | HOLDS (F10, F18) |
 | I15 | **Registry extensibility:** providers are peers; no controller change per policy | `PolicyRegistry`, `SealPolicyProvider` | registry tests | HOLDS (a replace must be explicit — F19) |
@@ -1074,7 +1074,7 @@ The README states this and `tests/integration/nft-gate.integration.test.ts` does
 | `@mysten/seal` (peer) | `^1.4.18` (1.4.19) | encrypt and decrypt | clean | AES-256-GCM DEM default |
 | `@mysten/sui` (peer) | `^2.33.2` (2.35.0) | PTB build, events | clean | workspace floor `^2.33.2` (the ADR-0001 text still names `^2.33.1`); one copy |
 | `@meddleware/access-gate-client` | `^0.0.10` (0.0.10 working tree; 0.0.9 released) | gate suggestions, gate check, operator lookup; indexer reader | provenance attested | its reader findings are tracked in `access-gate-client-audit.md` (F15) |
-| `@meddleware/seal-policies-sui` (dev) | `0.0.7` exact | ID generation (build time) | provenance attested | source of every target |
+| `@meddleware/sealed-storage-sui` (dev) | `0.0.7` exact | ID generation (build time) | provenance attested | source of every target |
 | typescript / vitest / eslint (dev) | `~6.0.3` / `~5.0.2` / `^10.11.0` | build/test | clean | |
 | Key-server committee | consumer config | decrypt — **fails closed** | n/a | B.SEAL-1 |
 | Sui full node | consumer client | PTB object resolution; event reads — fails closed (throws) | n/a | |
@@ -1084,7 +1084,7 @@ The README states this and `tests/integration/nft-gate.integration.test.ts` does
 
 | Item | Record |
 | --- | --- |
-| Key servers (per network) | consumer-configured. Defaults in seal-ui: testnet Mysten aggregator committee + 2 Mysten Open servers; mainnet Overclock, NodeInfra, H2O Nodes (Open) — fails closed |
+| Key servers (per network) | consumer-configured. Defaults in sealed-storage-ui: testnet Mysten aggregator committee + 2 Mysten Open servers; mainnet Overclock, NodeInfra, H2O Nodes (Open) — fails closed |
 | Aggregator | testnet `seal-aggregator-testnet.mystenlabs.com` (Mysten), keyless. No mainnet aggregator in the defaults (the README now agrees — F11) |
 | Seal SDK | `^1.4.18` peer (installed 1.4.19); fits ADR-0001 (`@mysten/sui ^2.33.2` floor, satisfied by the dashboard pin) |
 
@@ -1108,7 +1108,7 @@ The README states this and `tests/integration/nft-gate.integration.test.ts` does
 
 | Authority / secret | Where | Custody | Gates | Rotation |
 | --- | --- | --- | --- | --- |
-| npm publish `@meddleware/seal-client` | `npm-publish.yml` (tag `v*`) | GitHub OIDC → npm trusted publisher; `--provenance` | releases | n/a |
+| npm publish `@meddleware/sealed-storage-client` | `npm-publish.yml` (tag `v*`) | GitHub OIDC → npm trusted publisher; `--provenance` | releases | n/a |
 | Key-server API keys | caller config (`apiKey`) | **public by design** in browsers (documented) | aggregator access | caller's; unused by Meddleware apps (ADR-0002) |
 | Keys / capabilities | — | none held; signing is the caller's wallet | — | — |
 
@@ -1144,10 +1144,10 @@ None: no lifecycle scripts, no `allowScripts`, no `overrides`.
 
 | Location | Network | Value | Kind | Matches latest (evidence) |
 | --- | --- | --- | --- | --- |
-| `src/deployments.ts` (generated) | testnet | `0x0c8f7349…773d` / same / `0xee0403ba…7d1a` | original-id / published-at / PolicyConfig | Y — `check:deployments` vs `seal-policies-sui@0.0.7` (`Published.toml` v1 = latest record; republished 2026-10-09, superseding `0x61c4aa…`, now immutable) |
+| `src/deployments.ts` (generated) | testnet | `0x0c8f7349…773d` / same / `0xee0403ba…7d1a` | original-id / published-at / PolicyConfig | Y — `check:deployments` vs `sealed-storage-sui@0.0.7` (`Published.toml` v1 = latest record; republished 2026-10-09, superseding `0x61c4aa…`, now immutable) |
 | `tests/integration/abi-drift.integration.test.ts` | testnet | asserts published-at is the latest of `listPackageVersions(originalId)` | live | passed 2026-10-09 against the new package (`SEAL_TESTNET=1`, 3 files, 9 tests); weekly in `live.yml` (F10) |
 | `src/providers/timelock.ts` | all | `0x6` | Clock | system object |
-| Consumers (seal-ui) | testnet | `sealPoliciesDeployment(net)` | — | Y by construction |
+| Consumers (sealed-storage-ui) | testnet | `sealPoliciesDeployment(net)` | — | Y by construction |
 
 ### B.SC-2 Coupling table
 
@@ -1158,7 +1158,7 @@ None: no lifecycle scripts, no `allowScripts`, no `overrides`.
 | `timelock::seal_approve(vector<u8>, &PolicyConfig, &Clock)` | time-lock `buildApprove` | `builds a timelock seal_approve move call over the Clock` (object order asserted) |
 | `sealed_content::publish(&PolicyConfig, ID, String, String, String, &mut TxContext)` | `buildPublishSealedContentTx` / `…Transaction` | `PolicyConfig (version gate) is the first argument`; limits tests |
 
-Signatures were cross-checked against `seal-policies-sui/sources/*.move` at `0726070` (first pass) and re-checked at 2026-10-09 by the live ABI-drift test against the new package (`a03a532`, 0.0.7); they match.
+Signatures were cross-checked against `sealed-storage-sui/sources/*.move` at `0726070` (first pass) and re-checked at 2026-10-09 by the live ABI-drift test against the new package (`a03a532`, 0.0.7); they match.
 
 ### B.SC-3 Cross-implementation parity
 
@@ -1169,12 +1169,12 @@ Signatures were cross-checked against `seal-policies-sui/sources/*.move` at `072
 | `sealed_content` string limits | `SEALED_CONTENT_LIMITS` (UTF-8 bytes) | `MAX_*_BYTES` (`String.length()` bytes) | hand-mirrored tests on both sides |
 | `SealedContentPublished` layout | BCS struct | Move struct | live decode test (weekly `live.yml`) |
 
-### B.SEAL-1 Committee readiness (consumer configuration; owned by seal-ui and ADR-0002)
+### B.SEAL-1 Committee readiness (consumer configuration; owned by sealed-storage-ui and ADR-0002)
 
 | Network | Servers (operators) | Mode | t | Change process | Existing ciphertexts |
 | --- | --- | --- | --- | --- | --- |
-| testnet | Mysten committee (aggregator) + Mysten Open ×2 | mixed | 2 | seal-ui env | bound to the servers in their header; move them with `describeCiphertext` + `sealedUnderServers` + re-seal (README) |
-| mainnet | Overclock, NodeInfra, H2O Nodes (Open, keyless) | independent, Open mode 2-of-3 | 2 | seal-ui env + ADR-0002 | same |
+| testnet | Mysten committee (aggregator) + Mysten Open ×2 | mixed | 2 | sealed-storage-ui env | bound to the servers in their header; move them with `describeCiphertext` + `sealedUnderServers` + re-seal (README) |
+| mainnet | Overclock, NodeInfra, H2O Nodes (Open, keyless) | independent, Open mode 2-of-3 | 2 | sealed-storage-ui env + ADR-0002 | same |
 
 The client validates `t ≤ total weight`. It does not require t ≥ 2, so a consumer can still choose t = 1;
 the README no longer suggests it (F11), and MeddleWare's apps use t = 2 (ADR-0002).
@@ -1184,9 +1184,9 @@ the README no longer suggests it (F11), and MeddleWare's apps use t = 2 (ADR-000
 | Requirement | Holds? | Evidence |
 | --- | --- | --- |
 | Paginated with a cursor | Yes | `listSealedContent` cursors, source-bound |
-| Filtered client-side | Yes | by gate, and by publisher through `publishers` / `gateOperators` (F6); the library default is unfiltered, seal-ui lists operator-only |
+| Filtered client-side | Yes | by gate, and by publisher through `publishers` / `gateOperators` (F6); the library default is unfiltered, sealed-storage-ui lists operator-only |
 | Label size bounded | Yes | on-chain 256 bytes; mirrored in the builder |
-| Rendered as untrusted data | consumer's (VUE lens, seal-ui) | — |
+| Rendered as untrusted data | consumer's (VUE lens, sealed-storage-ui) | — |
 
 ---
 
@@ -1237,10 +1237,10 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 - [x] original-id (namespace) and published-at (approve target) recorded and used — F21; `encrypt` binding
   pinned by a hermetic test (F10)
-- [x] threshold ≤ configured weight; SessionKey cleared on account switch and disconnect (seal-ui)
+- [x] threshold ≤ configured weight; SessionKey cleared on account switch and disconnect (sealed-storage-ui)
 - [x] live decrypt round trip **with negatives** (wrong gate, exhausted/missing pass, too early,
   wrong namespace, paused gate) — F10: `tests/integration/nft-gate.integration.test.ts`, 8 tests, passed twice on 2026-10-22 against the public
-  testnet committee (maintainer-run; repeat before each release of this package or of seal-policies-sui). "Wrong namespace" is refused by the controller
+  testnet committee (maintainer-run; repeat before each release of this package or of sealed-storage-sui). "Wrong namespace" is refused by the controller
   before any request and shown to abort in the dry run; a key server is not asked.
 - [x] a client can tell a user why a decrypt was refused (paused, used up, wrong gate, too early, retired version, not the owner) — F27, 0.0.23:
   `SealController.explainRefusal`; unit-pinned for every abort of the table and asserted live (8/8, 2026-10-22)
@@ -1249,17 +1249,17 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 
 ### pre-mainnet
 
-- [ ] mainnet deployment recorded (seal-policies-sui is unpublished on mainnet); unknown networks fail
+- [ ] mainnet deployment recorded (sealed-storage-sui is unpublished on mainnet); unknown networks fail
   closed (F12, done) — mainnet-blocked: mainnet publication (`OPERATOR_TASKS.md` "Mainnet release custody")
 - [ ] mainnet key servers chosen and verified; `verifyKeyServers` on; t decided — decided (decision):
-  Overclock, NodeInfra and H2O Open mode 2-of-3 in seal-ui, README follows ADR-0002 (F11), `verifyKeyServers`
+  Overclock, NodeInfra and H2O Open mode 2-of-3 in sealed-storage-ui, README follows ADR-0002 (F11), `verifyKeyServers`
   is on for that configuration (F13). Not ticked: mainnet-blocked, the operator terms are a maintainer item
   (`OPERATOR_TASKS.md` "Mainnet Seal key servers").
-- [ ] policy-package UpgradeCap custody executed (seal-policies-sui OQ3) — disclosed in `SECURITY.md`; the
+- [ ] policy-package UpgradeCap custody executed (sealed-storage-sui OQ3) — disclosed in `SECURITY.md`; the
   new UpgradeCap is with the deploy key; multisig transfer and burn are the pre-mainnet process
   (`OPERATOR_TASKS.md` "Mainnet release custody")
 - [x] a stale indexer head page falls back to the full node (sui-indexer F19, the discovery half) — F26, 0.0.21 (needs access-gate-client `^0.0.10`)
-- [x] discovery can be authenticated by publisher — F6 (`publishers`, `gateOperators`; seal-ui is operator-only)
+- [x] discovery can be authenticated by publisher — F6 (`publishers`, `gateOperators`; sealed-storage-ui is operator-only)
 - [x] SessionKey margin and persistence reviewed — F9 (memory-only; margin from key creation)
 - [ ] external review — maintainer item
 
@@ -1278,19 +1278,19 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
   inputs are now refused. Its discovery output is untrusted by default and can be filtered by publisher (F6).
 - **Deployment readiness:** Section D.
 - **Chain-access layering & on-chain ID/ABI coupling (ADR-0001):**
-  - this is the domain client for `seal_policies`; seal-ui delegates to it and holds no ID literals;
+  - this is the domain client for `seal_policies`; sealed-storage-ui delegates to it and holds no ID literals;
   - it reads `access_gate` only through access-gate-client;
   - call targets use published-at, and types, events and the namespace use original-id, both
     recorded;
   - the `access_gate` id used for suggestions and the encrypt-time gate check is caller-supplied, not
     derived from the one `seal_policies` links (F7); a wrong id fails closed.
 - **Pre-v0.2 policy:** F7, F8, F9, F12, F14 and F16 changed exported types without shims (breaking changes
-  in 0.0.16–0.0.18, patch-only bumps until go-live; seal-ui bumped in step, consuming `^0.0.19`; `^0.0.20` since the 2026-10-18 release).
+  in 0.0.16–0.0.18, patch-only bumps until go-live; sealed-storage-ui bumped in step, consuming `^0.0.19`; `^0.0.20` since the 2026-10-18 release).
 - **Shared with sibling audits:**
   - access-gate-client F5 / F7 / F8 ↔ F12 / F15;
-  - seal-policies-sui F4 / OQ4 ↔ F6;
-  - seal-policies-sui F16 / OQ9 ↔ F17;
-  - seal-policies-sui F27 / OQ11 ↔ F16.
+  - sealed-storage-sui F4 / OQ4 ↔ F6;
+  - sealed-storage-sui F16 / OQ9 ↔ F17;
+  - sealed-storage-sui F27 / OQ11 ↔ F16.
 
 ---
 
@@ -1318,7 +1318,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 | SEAL-M1 | yes (encrypt pinned hermetically) | I1, F10 |
 | SEAL-M2 | yes | I2 |
 | SEAL-M3 | yes | I4 |
-| SEAL-M4 | t ≤ servers yes; ≥ 2 independent operators is the consumer's (seal-ui yes, mainnet 2-of-3 Open mode; README follows ADR-0002 — F11); `verifyKeyServers` off in mixed configs, visible through `verifiesKeyServers` (F13) | B.SEAL-1 |
+| SEAL-M4 | t ≤ servers yes; ≥ 2 independent operators is the consumer's (sealed-storage-ui yes, mainnet 2-of-3 Open mode; README follows ADR-0002 — F11); `verifyKeyServers` off in mixed configs, visible through `verifiesKeyServers` (F13) | B.SEAL-1 |
 | SEAL-M5 | yes: bounded, scoped, cleared, never exported; margin counted from key creation | F9 |
 | SEAL-M6 | yes (`SECURITY.md` "Identities and labels are public") | — |
 | SEAL-M7 | yes: non-revocability and membership stated in `SECURITY.md`; a past unlock time is refused unless `allowPast` (F8); transferable gates refused (F17) | — |
@@ -1355,7 +1355,7 @@ Coverage was not re-measured: the coverage plugin is not installed. The rows tha
 Status at 2026-10-09 in brackets.
 
 - **S1** SHOULD expose `gateOperators()` and a publisher-filtered listing as the default discovery
-  path (F6). [Done: both exist; the default for UIs is seal-ui's operator-only listing, the library
+  path (F6). [Done: both exist; the default for UIs is sealed-storage-ui's operator-only listing, the library
   default stays unfiltered.]
 - **S2** SHOULD add an `encrypt` pre-flight per provider (`validateEncryptParams(client, params)`)
   covering F7 and F8, so the registry stays the only extension seam. [Not adopted: the id and u64 checks
@@ -1371,10 +1371,10 @@ Status at 2026-10-09 in brackets.
   mixed configuration (F11, F13). [Not added; `verifiesKeyServers` exposes the setting.]
 
 - **S7** SHOULD map the `seal_policies` abort codes by `(module, code)` so a client can tell a paused gate from a missing pass
-  and a retired package version from a bad identity (seal-policies-sui dev-guide rule 5, OQ5). [Done in 0.0.22, commit 10b6bb0:
+  and a retired package version from a bad identity (sealed-storage-sui dev-guide rule 5, OQ5). [Done in 0.0.22, commit 10b6bb0:
   `src/aborts.ts` (`POLICY_ABORTS`, `describePolicyAbort`, `parseMoveAbort`, `classifyPolicyAbort`), `nft_gate` 4 `E_GATE_PAUSED` and `config` 1
   `E_WRONG_VERSION` plus the other codes of the four modules; `tests/aborts.test.ts` (8 tests, and 4 that compare the table with the Move
-  constants when seal-policies-sui is next to this repo). Verified live 2026-10-22 (F27): a key server's refusal carries no abort text (`NoAccessError` / `InvalidParameterError`), so the map applies to the approve PTB simulated by the client, not to the error of `decrypt`; OQ5.]
+  constants when sealed-storage-sui is next to this repo). Verified live 2026-10-22 (F27): a key server's refusal carries no abort text (`NoAccessError` / `InvalidParameterError`), so the map applies to the approve PTB simulated by the client, not to the error of `decrypt`; OQ5.]
 
 - **S8** MAY let a client ask why a decrypt was refused (F27, OQ5). [Done in 0.0.23, commit 10b6bb0: `SealController.explainRefusal`
   and `explainApproveRefusal` (`src/refusal.ts`); opt-in, one read-only simulation, `decrypt` unchanged.]
@@ -1384,8 +1384,8 @@ Status at 2026-10-09 in brackets.
 OQ1–OQ5 are answered (decisions, not open items).
 
 - **OQ1** Discovery authenticity (F6): (a) client-side publisher filtering, (b) the curated on-chain
-  `publish_curated` from `seal-policies-sui` OQ4, (c) content signing in the manifest. **Answered: (a).**
-  `publishers` and `gateOperators` shipped in 0.0.16 and seal-ui lists operator-only pointers; (b) and (c) are
+  `publish_curated` from `sealed-storage-sui` OQ4, (c) content signing in the manifest. **Answered: (a).**
+  `publishers` and `gateOperators` shipped in 0.0.16 and sealed-storage-ui lists operator-only pointers; (b) and (c) are
   not planned.
 - **OQ2** Should `encrypt` read chain state (F7: gate type; F17: soulbound) and refuse? **Answered: yes, as an
   opt-in.** With `accessGateOriginalId` set it reads the gate and refuses; without it, encryption needs only
@@ -1437,7 +1437,7 @@ OQ1–OQ5 are answered (decisions, not open items).
   - **Lenses:** AUDIT_TEMPLATE.md (2026-10-08) + SEAL (2026-09-30) + SUI_CLIENT (2026-10-08) + TS (2026-10-08).
     VUE, WALRUS, AUTH, OPS and IMG stay untriggered (front matter).
   - **Measured:** vitest 97/97 (10 files); tsc, eslint, `npm audit --audit-level=high` (0) and
-    `check:deployments` (`seal-policies-sui@0.0.7`) clean; `SEAL_TESTNET=1 npm run test:integration`
+    `check:deployments` (`sealed-storage-sui@0.0.7`) clean; `SEAL_TESTNET=1 npm run test:integration`
     3 files, 9 tests passed against the new package; `npm view` shows 0.0.19 as `latest` with provenance.
   - **Dispositions (23 entries):** RESOLVED 14 (F2, F4, F5, F6, F7, F8, F9, F11, F12, F14, F15, F17, F18, F19);
     MITIGATED 3 (F10, F13, F20); ADJUDICATED 2 (F16, F24); ACCEPTED-RISK 1 (F25); Positive 3 (F21–F23). None
@@ -1468,8 +1468,8 @@ OQ1–OQ5 are answered (decisions, not open items).
   - **Still not done (maintainer or mainnet):** unchanged from 2026-10-09 (live nft-gate negatives, mainnet
     publication, key-server terms, UpgradeCap custody, external review).
   - **No new findings.**
-- 2026-10-18 (later) — released (0.0.20), consumers bumped (seal-ui, docs, dev and sui-indexer: `^0.0.20`). `npm view` shows
-  `@meddleware/seal-client` 0.0.20 as `latest`, published 2026-10-18T09:06Z, with SLSA v1 provenance
+- 2026-10-18 (later) — released (0.0.20), consumers bumped (sealed-storage-ui, docs, dev and sui-indexer: `^0.0.20`). `npm view` shows
+  `@meddleware/sealed-storage-client` 0.0.20 as `latest`, published 2026-10-18T09:06Z, with SLSA v1 provenance
   (`dist.attestations`); tag `v0.0.20` = `9ef93f9` (code `48fd9d6`). The Section D provenance box
   ("0.0.20 pending release") is updated with that evidence; the unticked boxes are unchanged (live nft-gate negatives,
   mainnet items, external review).
@@ -1487,7 +1487,7 @@ OQ1–OQ5 are answered (decisions, not open items).
 
 - 2026-10-22 (fix wave, 0.0.22, local commit, not released) — the abort map (S7).
   - **Done:** `src/aborts.ts` exports `POLICY_ABORTS` (every code of `config`, `nft_gate`, `timelock`, `sealed_content`), `describePolicyAbort(module, code)`, `parseMoveAbort` (the Sui clients' abort message, the older debug form, a structured status, an `Error` and its `cause` chain) and `classifyPolicyAbort(input, { policyPackageIds })`, which refuses an abort from a package that is not the policy package. `nft_gate` 4 is `E_GATE_PAUSED` and `config` 1 is `E_WRONG_VERSION`. README section "Telling aborts apart", CLAUDE.md key-files row, CHANGELOG.
-  - **Measured:** vitest 121/121 (12 files; 109 before), `tsc --noEmit` and eslint clean. The table is compared with the Move constants of the sibling checkout (seal-policies-sui `sources/*.move`) in four tests.
+  - **Measured:** vitest 121/121 (12 files; 109 before), `tsc --noEmit` and eslint clean. The table is compared with the Move constants of the sibling checkout (sealed-storage-sui `sources/*.move`) in four tests.
   - **Not verified:** what a key server's refusal looks like to the client (the abort text may not reach the caller; the parser then returns undefined and the caller shows a generic refusal). No disposition changes; no finding was opened or closed by this item.
 - 2026-10-22 (live nft-gate round trip with negatives; test and docs only, no `src` change) — Section D live gate run.
   - **Added:** `tests/integration/nft-gate.integration.test.ts` (8 tests; skips unless `SEAL_TESTNET=1` and `SEAL_LIVE_KEY_FILE` are set), README section "Live nft-gate round trip with negatives", a comment in `live.yml`. It does not run in CI.
@@ -1514,3 +1514,4 @@ OQ1–OQ5 are answered (decisions, not open items).
 - [x] Re-verification log entry added (2026-10-03 and 2026-10-09).
 - [x] 2026-10-22 (0.0.23): F27 RESOLVED (`explainRefusal`), OQ5 answered, S8 and a Section D box added; counts 25 entries (RESOLVED 19, MITIGATED 1); C.1 182/182; log entry added.
 - [x] 2026-10-22 (live run): F10 RESOLVED, F27 and OQ5 added; the Section D live box ticked; C.2, S5, S7 and Risks lines updated; counts 25 entries (RESOLVED 18); log entry added.
+- 2026-10-24 — repository renamed from `seal-client` to `sealed-storage-client` (workspace naming convention, `docs/architecture/ADR-0003-naming.md`): package, image, host and path names updated throughout. No finding, disposition or evidence changed.

@@ -1,5 +1,5 @@
 // The SealedManifest is the interchange format between encrypt and decrypt (CLAUDE.md invariant).
-// This guard is the single place the shape is validated, so every consumer (seal-ui and any other
+// This guard is the single place the shape is validated, so every consumer (sealed-storage-ui and any other
 // app) rejects malformed manifests the same way rather than each re-implementing an ad-hoc check.
 
 import type { PolicyRegistry } from './registry.js'
@@ -40,7 +40,7 @@ function requireIdentityHex(o: Record<string, unknown>): string {
  * malformed manifest fails here with a clear error instead of at PTB build time.
  *
  * This does NOT check that `network` matches the app's current network — that is an
- * application-level policy the caller enforces after parsing (see seal-ui).
+ * application-level policy the caller enforces after parsing (see sealed-storage-ui).
  */
 export function parseSealedManifest(raw: unknown, registry?: PolicyRegistry): SealedManifest {
   let value: unknown = raw

@@ -1,7 +1,7 @@
 /**
  * Maintainer-run live round trip of the `nft-gate` policy against the public TESTNET Seal key servers,
  * with the negatives (sealed-storage lens C.2): wrong gate, non-owner, exhausted pass, paused gate, a
- * time-lock that is still locked, and the frozen-transferable-pass outcome (seal-policies-sui F16).
+ * time-lock that is still locked, and the frozen-transferable-pass outcome (sealed-storage-sui F16).
  *
  * It spends testnet SUI, so it is NOT part of the weekly CI job (a funded key must never be a CI secret). It
  * skips unless BOTH are set:
@@ -94,8 +94,8 @@ const explainAs = (
   s: { id: string },
 ) => controller().explainRefusal('nft-gate', { gateId: g.gateId, nftId, soulbound: g.soulbound }, s.id, { address: sender })
 
-describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (maintainer-run, spends testnet SUI)', () => {
-  const plaintext = new TextEncoder().encode('seal-client live nft-gate round trip')
+describe.skipIf(!ENABLED)('sealed-storage-client live nft-gate round trip with negatives (maintainer-run, spends testnet SUI)', () => {
+  const plaintext = new TextEncoder().encode('sealed-storage-client live nft-gate round trip')
   let keypair: Ed25519Keypair
   let address: string
   const sign = (kp: Ed25519Keypair) => (m: Uint8Array) => kp.signPersonalMessage(m)
@@ -137,9 +137,9 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
         defaultUses: 1,
         soulbound,
         autoBurnAtZero: false,
-        nftName: `seal-client live ${label}`,
+        nftName: `sealed-storage-client live ${label}`,
         nftImageUrl: 'https://meddleware.co.uk/x.png',
-        nftDescription: 'scratch gate of the seal-client live nft-gate test',
+        nftDescription: 'scratch gate of the sealed-storage-client live nft-gate test',
         policy,
       }),
     )
@@ -246,7 +246,7 @@ describe.skipIf(!ENABLED)('seal-client live nft-gate round trip with negatives (
   }, 120_000)
 
   it('F16: a frozen transferable pass opens the content to any address; the default config refuses to seal to such a gate', async () => {
-    // seal-client's default refuses to seal to a gate that mints transferable passes.
+    // sealed-storage-client's default refuses to seal to a gate that mints transferable passes.
     await expect(controller().encrypt('nft-gate', { gateId: gates.transferable.gateId }, plaintext)).rejects.toThrow(/transferable/)
     const ctl = controller(true)
     const s = await ctl.encrypt('nft-gate', { gateId: gates.transferable.gateId }, plaintext)

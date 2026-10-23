@@ -21,7 +21,7 @@ import { sealPoliciesDeployment } from '../../src/deployments.js'
 
 // Public Mysten Labs testnet committee — three servers, 2-of-3 threshold.
 // Server 0: committee-mode (aggregatorUrl required); servers 1-2: independent (URL on-chain).
-// These match the defaults in seal-ui/src/config.ts.
+// These match the defaults in sealed-storage-ui/src/config.ts.
 const DEPLOYMENT = sealPoliciesDeployment('testnet')
 const SERVER_CONFIGS = [
   {
@@ -61,7 +61,7 @@ function makeController(suiClient: SuiGrpcClient) {
 }
 
 describe.skipIf(process.env.SEAL_TESTNET !== '1')(
-  'seal-client live integration — public testnet committee (run with SEAL_TESTNET=1)',
+  'sealed-storage-client live integration — public testnet committee (run with SEAL_TESTNET=1)',
   () => {
     it(
       'encrypts and decrypts a payload using a past-timestamp time-lock (unfunded keypair)',

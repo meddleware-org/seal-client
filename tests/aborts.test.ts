@@ -90,8 +90,8 @@ describe('policy abort map (S7 / OQ5)', () => {
 })
 
 // The table mirrors the Move constants. When the policy package is checked out next to this repo, compare them.
-const SOURCES = fileURLToPath(new URL('../../seal-policies-sui/sources/', import.meta.url))
-describe.skipIf(!existsSync(SOURCES))('policy abort map matches seal-policies-sui', () => {
+const SOURCES = fileURLToPath(new URL('../../sealed-storage-sui/sources/', import.meta.url))
+describe.skipIf(!existsSync(SOURCES))('policy abort map matches sealed-storage-sui', () => {
   for (const module of ['config', 'nft_gate', 'timelock', 'sealed_content'] as const) {
     it(`${module}: every error constant is in the table, and nothing else is`, () => {
       const source = readFileSync(`${SOURCES}${module}.move`, 'utf8')

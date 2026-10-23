@@ -21,6 +21,6 @@ export async function gateOperators(
   extra: string[] = [],
 ): Promise<string[]> {
   const gate = await fetchGate(client, gateId, accessGateOriginalId)
-  if (!gate) throw new Error(`seal-client: ${gateId} is not a Gate of ${accessGateOriginalId}`)
+  if (!gate) throw new Error(`sealed-storage-client: ${gateId} is not a Gate of ${accessGateOriginalId}`)
   return [...new Set([gate.paymentRecipient, ...extra].map((a) => normalizeSuiAddress(a)))]
 }

@@ -64,7 +64,7 @@ export interface PolicyDescriptor {
 /**
  * Where a `seal_policies` call goes: the package's latest published-at (call target) and its shared
  * `PolicyConfig` (the version gate every `seal_approve*` and `sealed_content::publish` reads).
- * `sealPoliciesDeployment(network)` from `@meddleware/seal-client/deployments` supplies both.
+ * `sealPoliciesDeployment(network)` from `@meddleware/sealed-storage-client/deployments` supplies both.
  */
 export interface SealPolicyTarget {
   publishedAt: string

@@ -1,13 +1,13 @@
-# @meddleware/seal-client
+# @meddleware/sealed-storage-client
 
 Modular [Seal](https://seal-docs.wal.app/) encryption for Sui — the client half of Meddleware
-**Sealed Storage**. Pairs with the [`seal_policies`](https://github.com/meddleware-org/seal-policies-sui)
+**Sealed Storage**. Pairs with the [`seal_policies`](https://github.com/meddleware-org/sealed-storage-sui)
 Move package (each policy provider here mirrors one Move module).
 
 ## Install
 
 ```sh
-npm install @meddleware/seal-client @mysten/seal @mysten/sui
+npm install @meddleware/sealed-storage-client @mysten/seal @mysten/sui
 ```
 
 `@mysten/seal` and `@mysten/sui` are peer dependencies (the app provides a single instance).
@@ -31,9 +31,9 @@ Built-in providers: `nft-gate` (access-gate NFT ownership) and `time-lock` (Cloc
 
 ```ts
 import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { createDefaultRegistry } from '@meddleware/seal-client'
-import { SealController } from '@meddleware/seal-client/controller' // also on the main entry; the subpath lets apps lazy-load @mysten/seal
-import { sealPoliciesDeployment } from '@meddleware/seal-client/deployments'
+import { createDefaultRegistry } from '@meddleware/sealed-storage-client'
+import { SealController } from '@meddleware/sealed-storage-client/controller' // also on the main entry; the subpath lets apps lazy-load @mysten/seal
+import { sealPoliciesDeployment } from '@meddleware/sealed-storage-client/deployments'
 import { accessGateDeployment } from '@meddleware/access-gate-client/deployments'
 
 const suiClient = new SuiGrpcClient({ network: 'testnet', baseUrl: 'https://fullnode.testnet.sui.io:443' })
@@ -98,8 +98,8 @@ It also has one shared object, **`policyConfigId`** (`PolicyConfig`): every `sea
 `sealed_content::publish` takes it and aborts (`config::E_WRONG_VERSION`) under a retired package
 version, so an upgrade can retire old code everywhere at once.
 
-All three come from `@meddleware/seal-client/deployments`, which is generated from the
-`Published.toml` and `deployments.json` that `@meddleware/seal-policies-sui` publishes. Pass
+All three come from `@meddleware/sealed-storage-client/deployments`, which is generated from the
+`Published.toml` and `deployments.json` that `@meddleware/sealed-storage-sui` publishes. Pass
 `{ publishedAt, policyConfigId }` (a `SealPolicyTarget`) wherever a call target is needed.
 
 ## Telling aborts apart
@@ -108,7 +108,7 @@ The small abort codes of the `seal_policies` modules overlap (`nft_gate`, `timel
 **module and the code** together, never the code alone. `classifyPolicyAbort` does this for the `seal_policies` modules:
 
 ```ts
-import { classifyPolicyAbort } from '@meddleware/seal-client'
+import { classifyPolicyAbort } from '@meddleware/sealed-storage-client'
 
 const abort = classifyPolicyAbort(executionError, { policyPackageIds: [deployment.originalId, deployment.publishedAt] })
 if (abort?.module === 'nft_gate' && abort.code === 4) showPaused() // E_GATE_PAUSED: access resumes when the operator unpauses
@@ -168,7 +168,7 @@ server set (for example when a provider withdraws), decrypt it with a controller
 servers its header records, then encrypt the plaintext with the current controller:
 
 ```ts
-import { describeCiphertext, sealedUnderServers } from '@meddleware/seal-client/controller'
+import { describeCiphertext, sealedUnderServers } from '@meddleware/sealed-storage-client/controller'
 
 const info = describeCiphertext(ciphertext) // { id, packageId, threshold, servers }
 if (!sealedUnderServers(info, currentServers, currentThreshold)) {
@@ -186,7 +186,7 @@ if (!sealedUnderServers(info, currentServers, currentThreshold)) {
 ## Sealed-content discovery
 
 ```ts
-import { buildPublishSealedContentTransaction, listSealedContent } from '@meddleware/seal-client'
+import { buildPublishSealedContentTransaction, listSealedContent } from '@meddleware/sealed-storage-client'
 
 const tx = buildPublishSealedContentTransaction({ publishedAt, policyConfigId }, { gateId, blobId, sealId, label })
 
@@ -231,7 +231,7 @@ page.pointers // newest first; page.cursor continues
 ```sh
 npm run type-check
 npm test
-npm run check:deployments   # src/deployments.ts matches @meddleware/seal-policies-sui
+npm run check:deployments   # src/deployments.ts matches @meddleware/sealed-storage-sui
 npm run test:integration    # live testnet (key servers + full node, ABI drift)
 ```
 
@@ -239,7 +239,7 @@ npm run test:integration    # live testnet (key servers + full node, ABI drift)
 
 `tests/integration/nft-gate.integration.test.ts` seals to a gate you own, buys passes and decrypts through the public testnet Seal
 key servers, then checks each refusal: a pass of another gate, an exhausted pass, a paused gate, a time-lock that has not opened, an
-address that does not own the pass, and a frozen transferable pass (which opens the content to anyone, seal-policies-sui F16). It
+address that does not own the pass, and a frozen transferable pass (which opens the content to anyone, sealed-storage-sui F16). It
 skips unless a funded testnet key is supplied, so the weekly CI job never runs it (a funded key must not be a CI secret):
 
 ```sh

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This policy covers security issues in the `@meddleware/seal-client` package source
+This policy covers security issues in the `@meddleware/sealed-storage-client` package source
 (`src/**`) — the `SealController` encrypt/decrypt orchestration, the `PolicyRegistry`, the
 identity byte encoders (`src/bytes.ts` and the policy providers), and the SessionKey lifecycle.
 
@@ -11,7 +11,7 @@ It does not cover:
 - **Seal** or the `@mysten/seal` / `@mysten/sui` SDKs (report upstream to
   [Mysten Labs](https://github.com/MystenLabs)) — the threshold key-server committee holds all
   decryption keys and independently dry-runs `seal_approve` before releasing any share
-- The on-chain `seal-policies-sui` Move package (see that repo's `SECURITY.md`)
+- The on-chain `sealed-storage-sui` Move package (see that repo's `SECURITY.md`)
 - A consuming application's key-server / committee configuration, or its decision to register a
   third-party policy provider (a registered provider runs unsandboxed in the host realm)
 

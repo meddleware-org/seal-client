@@ -19,7 +19,7 @@ jobs:
     uses: ./.github/workflows/node-ci.yml
 
   publish-npm:
-    name: npmjs (@meddleware/seal-client)
+    name: npmjs (@meddleware/sealed-storage-client)
     needs: verify
     runs-on: ubuntu-latest
     permissions:

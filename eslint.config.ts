@@ -7,13 +7,13 @@ import tseslint from 'typescript-eslint'
 export default defineConfig(
   globalIgnores(['**/dist/**', '**/coverage/**', '**/*.d.ts']),
   {
-    name: 'seal-client/typescript',
+    name: 'sealed-storage-client/typescript',
     files: ['**/*.{ts,mts,tsx}'],
     extends: [tseslint.configs.recommended],
   },
 
   {
-    name: 'seal-client/overrides',
+    name: 'sealed-storage-client/overrides',
     files: ['**/*.{ts,mts,tsx}'],
     rules: {
       // Underscore-prefixed args/vars are an intentional "unused" marker; rest-sibling

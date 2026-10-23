@@ -52,7 +52,7 @@ export const timeLockProvider: SealPolicyProvider<TimeLockParams> = {
     // buildId and would be rejected on-chain.
     if (idBytes.length !== 8 + NONCE_LEN) {
       throw new Error(
-        `seal-client: time-lock id must be ${8 + NONCE_LEN} bytes ([unlock_ms][nonce]); got ${idBytes.length}`,
+        `sealed-storage-client: time-lock id must be ${8 + NONCE_LEN} bytes ([unlock_ms][nonce]); got ${idBytes.length}`,
       )
     }
   },

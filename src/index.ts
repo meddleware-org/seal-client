@@ -1,6 +1,6 @@
-// @meddleware/seal-client — modular Seal encryption for Sui.
+// @meddleware/sealed-storage-client — modular Seal encryption for Sui.
 //
-// The on-chain half is the `seal_policies` Move package (repos/seal-policies-sui). Each policy is
+// The on-chain half is the `seal_policies` Move package (repos/sealed-storage-sui). Each policy is
 // a provider here mirrored 1:1 with a Move module; the registry is the extension seam.
 
 export type {
@@ -58,4 +58,4 @@ export {
 } from './refusal.js'
 export { gateOperators } from './operators.js'
 export { assertLinkedGate } from './gate-check.js'
-// Deployment ids are in the `@meddleware/seal-client/deployments` subpath.
+// Deployment ids are in the `@meddleware/sealed-storage-client/deployments` subpath.

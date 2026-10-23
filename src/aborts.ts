@@ -3,7 +3,7 @@
 // The small codes overlap: `nft_gate`, `timelock`, `config` and `sealed_content` all use `1`, and `access_gate`
 // reuses small integers too, so a bare code means nothing. A client that wants to tell a user "this gate is
 // paused" or "this package version was retired" must read the module (and, when it can, the package) as well.
-// The table below mirrors the constants in `seal-policies-sui/sources/*.move` (a test reads them when that
+// The table below mirrors the constants in `sealed-storage-sui/sources/*.move` (a test reads them when that
 // checkout is next to this one).
 
 /** A `seal_policies` module that can abort. */

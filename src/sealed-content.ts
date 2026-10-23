@@ -52,7 +52,7 @@ export function buildPublishSealedContentTx(
   for (const [field, max] of Object.entries(SEALED_CONTENT_LIMITS) as [keyof typeof SEALED_CONTENT_LIMITS, number][]) {
     const bytes = enc.encode(input[field]).length
     if (bytes > max) {
-      throw new Error(`seal-client: ${field} is ${bytes} bytes; sealed_content::publish accepts at most ${max}`)
+      throw new Error(`sealed-storage-client: ${field} is ${bytes} bytes; sealed_content::publish accepts at most ${max}`)
     }
   }
   tx.moveCall({
@@ -214,7 +214,7 @@ export async function listSealedContent(
       return { ...page, indexerError: e instanceof Error ? e.message : String(e) }
     }
   }
-  if (cursor?.source === 'indexer') throw new Error('seal-client: an indexer cursor needs the indexer option')
+  if (cursor?.source === 'indexer') throw new Error('sealed-storage-client: an indexer cursor needs the indexer option')
   return listFromRpc(client, options, limit, cursor?.value ?? null)
 }
 

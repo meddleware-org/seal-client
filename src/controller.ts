@@ -172,10 +172,10 @@ export class SealController {
     // tampered manifest would otherwise ask the servers for the wrong key).
     const sealed = EncryptedObject.parse(ciphertext)
     if (sealed.id.toLowerCase().replace(/^0x/, '') !== id.toLowerCase()) {
-      throw new Error('seal-client: ciphertext identity does not match the expected Seal id')
+      throw new Error('sealed-storage-client: ciphertext identity does not match the expected Seal id')
     }
     if (normalizeHexId(sealed.packageId) !== normalizeHexId(this.cfg.originalId)) {
-      throw new Error('seal-client: ciphertext was sealed under a different policy package')
+      throw new Error('sealed-storage-client: ciphertext was sealed under a different policy package')
     }
     const sessionKey = await this.session(opts.address, opts.signPersonalMessage)
 
@@ -286,11 +286,11 @@ export class SealController {
 export function assertApproveOnly(tx: Transaction, publishedAt: string): void {
   const pkg = normalizeHexId(publishedAt)
   const commands = tx.getData().commands
-  if (commands.length === 0) throw new Error('seal-client: the approve PTB is empty')
+  if (commands.length === 0) throw new Error('sealed-storage-client: the approve PTB is empty')
   for (const c of commands) {
     const call = c.$kind === 'MoveCall' ? c.MoveCall : null
     if (!call || normalizeHexId(call.package) !== pkg || !call.function.startsWith('seal_approve')) {
-      throw new Error('seal-client: the approve PTB may hold only seal_approve* calls to the policy package')
+      throw new Error('sealed-storage-client: the approve PTB may hold only seal_approve* calls to the policy package')
     }
   }
 }
