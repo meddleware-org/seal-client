@@ -3,7 +3,7 @@ import type { SealSuggestClient } from './types.js'
 
 /**
  * Check that `gateId` is a `Gate` of the `access_gate` package whose original id is
- * `accessGateOriginalId` (the one `seal_policies` links). Sealing to anything else (a typo, a
+ * `accessGateOriginalId` (the one `sealed_storage` links). Sealing to anything else (a typo, a
  * non-gate object, a gate of a superseded package) succeeds but can never be unlocked, because
  * `nft_gate::seal_approve` only accepts the linked package's `Gate` type.
  *

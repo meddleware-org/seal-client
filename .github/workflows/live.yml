@@ -1,8 +1,8 @@
 name: Live checks
 
-# Read-only checks against public testnet (no secrets): the ABI of every seal_policies builder against the
+# Read-only checks against public testnet (no secrets): the ABI of every sealed_storage builder against the
 # recorded published-at, event decoding against real events, and a time-lock round trip over the independent
-# key servers. Weekly, because a seal_policies republish, a key-server change or a fullnode change shows up
+# key servers. Weekly, because a sealed_storage republish, a key-server change or a fullnode change shows up
 # here before it breaks a user. The funded nft-gate round trip with negatives (tests/integration/nft-gate.integration.test.ts)
 # is maintainer-run and skips here: it needs a funded testnet key, which must never be a CI secret (README, "Live nft-gate round trip").
 

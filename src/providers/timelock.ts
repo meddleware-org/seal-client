@@ -22,14 +22,14 @@ const CLOCK_ID = '0x6'
  * the per-unlock-time population and keeps the identity compact and symmetric with the 8-byte
  * timestamp (total 16 bytes). As with nft-gate this is a uniqueness budget, not a secrecy one — the
  * identity is public in the manifest. The width is fixed by the on-chain
- * `seal_policies::timelock` identity layout `[8-byte BE unlock_ms][8-byte nonce]`; do not change one
+ * `sealed_storage::timelock` identity layout `[8-byte BE unlock_ms][8-byte nonce]`; do not change one
  * side only. See SECURITY.md.
  */
 const NONCE_LEN = 8
 
 /**
  * Time-lock encryption: decryptable by anyone once the on-chain Clock passes the unlock time.
- * Mirrors `seal_policies::timelock`. Identity layout: `[8-byte BE unlock_ms][8-byte nonce]`.
+ * Mirrors `sealed_storage::timelock`. Identity layout: `[8-byte BE unlock_ms][8-byte nonce]`.
  * Deliberately shares nothing with `nft-gate` — different fields, different args.
  */
 export const timeLockProvider: SealPolicyProvider<TimeLockParams> = {

@@ -103,7 +103,7 @@ describe('timeLockProvider', () => {
 
 // F2: the per-policy nonce widths are intentional and documented (see each provider's NONCE_LEN
 // comment + SECURITY.md). These assertions lock the widths so a change on this side without the
-// matching on-chain `seal_policies` layout change is caught here.
+// matching on-chain `sealed_storage` layout change is caught here.
 describe('nonce widths (F2)', () => {
   it('nft-gate identity is 32-byte gate id + 16-byte nonce (48 total)', () => {
     const id = nftGateProvider.buildId({ gateId: GATE })

@@ -5,7 +5,7 @@
 The **client half of Sealed Storage**: modular [Seal](https://seal-docs.wal.app/) threshold
 encryption for Sui. A pluggable **policy registry** (nft-gate, time-lock, …) plus a `SealController`
 that orchestrates threshold encrypt/decrypt over a key-server committee and manages the per-address
-`SessionKey`. The on-chain half is the `seal_policies` Move package
+`SessionKey`. The on-chain half is the `sealed_storage` Move package
 ([sealed-storage-sui](https://github.com/meddleware-org/sealed-storage-sui)); each provider here mirrors
 one Move module 1:1.
 
@@ -68,8 +68,8 @@ one Move module 1:1.
 | `src/providers/nft-gate.ts` | Access-gate NFT ownership policy; `suggest()` lists the wallet's gates (access-gate-client `fetchOwnedGates`). |
 | `src/providers/timelock.ts` | Clock-based time-lock policy (`0x6`). |
 | `src/sealed-content.ts` | Discovery pointers: publish builders, `listSealedContent` (full node / indexer), BCS event parser. |
-| `src/deployments.ts` | GENERATED `seal_policies` ids per network (subpath `./deployments`). |
-| `src/aborts.ts` | `seal_policies` abort codes keyed by `(module, code)` (`POLICY_ABORTS`, `classifyPolicyAbort`): the codes overlap between modules, so never match on the code alone. `tests/aborts.test.ts` compares the table with the Move constants when sealed-storage-sui is checked out beside this repo. |
+| `src/deployments.ts` | GENERATED `sealed_storage` ids per network (subpath `./deployments`). |
+| `src/aborts.ts` | `sealed_storage` abort codes keyed by `(module, code)` (`POLICY_ABORTS`, `classifyPolicyAbort`): the codes overlap between modules, so never match on the code alone. `tests/aborts.test.ts` compares the table with the Move constants when sealed-storage-sui is checked out beside this repo. |
 | `src/refusal.ts` | `explainApproveRefusal` / `SealController.explainRefusal`: simulates the approve PTB as the requester (read-only `simulateTransaction`) and returns `{ kind: 'allowed' \| 'refused' \| 'unknown', reason?, module?, code?, message, … }`. A key server's refusal carries no Move abort, so apps call this after a `NoAccessError`; `decrypt` never calls it (extra RPC). It does not throw on a refusal. |
 | `src/bytes.ts` | Hex/id/u64-BE/nonce/concat helpers — the single source of identity-byte truth. |
 | `src/index.ts` | Public surface (types, registry, controller, providers, sealed-content helpers). |
@@ -111,6 +111,6 @@ testnet `publishedAt` (public or entry, same type-parameter and parameter counts
 
 ### White-label (to write later)
 
-- Running the client against an operator's **own `seal_policies` deployment + key-server committee**:
+- Running the client against an operator's **own `sealed_storage` deployment + key-server committee**:
   which config to change (`originalId`/`publishedAt`, `serverConfigs`, `threshold`, network) and how policy sets are
   operator-defined by which providers/modules they ship.

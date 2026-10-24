@@ -11,11 +11,11 @@ describe('deployments', () => {
 
   it('does not resolve Object prototype members as networks', () => {
     for (const name of ['constructor', 'toString', '__proto__']) {
-      expect(() => sealPoliciesDeployment(name)).toThrow(/no seal_policies deployment recorded/)
+      expect(() => sealPoliciesDeployment(name)).toThrow(/no sealed_storage deployment recorded/)
     }
   })
 
   it('throws for a network without a deployment', () => {
-    expect(() => sealPoliciesDeployment('devnet')).toThrow(/no seal_policies deployment recorded/)
+    expect(() => sealPoliciesDeployment('devnet')).toThrow(/no sealed_storage deployment recorded/)
   })
 })

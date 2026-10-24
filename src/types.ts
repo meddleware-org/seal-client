@@ -62,7 +62,7 @@ export interface PolicyDescriptor {
 }
 
 /**
- * Where a `seal_policies` call goes: the package's latest published-at (call target) and its shared
+ * Where a `sealed_storage` call goes: the package's latest published-at (call target) and its shared
  * `PolicyConfig` (the version gate every `seal_approve*` and `sealed_content::publish` reads).
  * `sealPoliciesDeployment(network)` from `@meddleware/sealed-storage-client/deployments` supplies both.
  */
@@ -72,7 +72,7 @@ export interface SealPolicyTarget {
 }
 
 /**
- * A Seal access policy, mirrored 1:1 with a `seal_policies` Move module. Providers are peers —
+ * A Seal access policy, mirrored 1:1 with a `sealed_storage` Move module. Providers are peers —
  * none is privileged. Adding a policy type is a new provider here + a new Move module; existing
  * code is untouched.
  */

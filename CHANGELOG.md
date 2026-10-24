@@ -3,6 +3,12 @@
 All notable changes to `@meddleware/seal-client` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.25] - 2026-10-24
+
+### Changed
+
+- Docs and error messages name the Move package `sealed_storage` (ADR-0004). No behaviour change.
+
 ## [0.0.24] - 2026-10-24
 
 ### Changed

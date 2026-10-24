@@ -1515,3 +1515,4 @@ OQ1–OQ5 are answered (decisions, not open items).
 - [x] 2026-10-22 (0.0.23): F27 RESOLVED (`explainRefusal`), OQ5 answered, S8 and a Section D box added; counts 25 entries (RESOLVED 19, MITIGATED 1); C.1 182/182; log entry added.
 - [x] 2026-10-22 (live run): F10 RESOLVED, F27 and OQ5 added; the Section D live box ticked; C.2, S5, S7 and Risks lines updated; counts 25 entries (RESOLVED 18); log entry added.
 - 2026-10-24 — repository renamed from `seal-client` to `sealed-storage-client` (workspace naming convention, `docs/architecture/ADR-0003-naming.md`): package, image, host and path names updated throughout. No finding, disposition or evidence changed.
+- 2026-10-24 — identifier alignment (`docs/architecture/ADR-0004-identifier-alignment.md`): docs and errors name `sealed_storage`; no behaviour change.

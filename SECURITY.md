@@ -50,7 +50,7 @@ manifest — so the nonce is a *uniqueness / domain-separation* budget, not a se
 | `nft-gate` | `[32-byte gate id][16-byte nonce]` | 16 B (128-bit) | The gate id is a stable, public value reused for every ciphertext under that gate, so the nonce carries *all* per-ciphertext uniqueness — sized for negligible birthday collision across an unbounded population per gate. |
 | `time-lock` | `[8-byte BE unlock_ms][8-byte nonce]` | 8 B (64-bit) | The prefix is a low-entropy unlock timestamp, frequently shared across documents. 64 bits comfortably disambiguates the per-unlock-time population and keeps the identity compact/symmetric with the 8-byte timestamp. |
 
-Both widths are fixed by the matching on-chain `seal_policies` module layout and are locked by
+Both widths are fixed by the matching on-chain `sealed_storage` module layout and are locked by
 `tests/providers.test.ts` ("nonce widths (F2)"); changing a width requires a coordinated change to
 the Move module and the conformance vectors.
 
@@ -65,9 +65,9 @@ the Move module and the conformance vectors.
   transferable passes (it reads the gate; `accessGateOriginalId` must be configured) unless
   `allowTransferableGates: true`.
 - **Only the current policy package decrypts.** A controller serves the one `originalId` it is configured
-  with. Content sealed under a superseded `seal_policies` namespace is not supported by this package: the
+  with. Content sealed under a superseded `sealed_storage` namespace is not supported by this package: the
   manifest records no namespace, and pre-v0.2 packages are republished rather than migrated.
-- **The policy package can change.** Access is decided by the `seal_policies` package. Until its
+- **The policy package can change.** Access is decided by the `sealed_storage` package. Until its
   UpgradeCap is burned (see that package's `CUSTODY.md`), whoever holds the cap can publish an
   upgrade that changes who may decrypt **existing** ciphertexts. Check the package's custody record
   before sealing anything that must stay sealed.

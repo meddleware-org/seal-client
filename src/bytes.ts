@@ -1,5 +1,5 @@
 // Small, dependency-free byte helpers. Kept local so the identity-byte layout is defined in
-// exactly one place and matches the `seal_policies` Move modules bit-for-bit.
+// exactly one place and matches the `sealed_storage` Move modules bit-for-bit.
 
 /** Hex (with or without `0x`) → bytes. Odd-length input is left-padded with a nibble. */
 export function hexToBytes(hex: string): Uint8Array {
@@ -34,7 +34,7 @@ export function objectIdBytes(id: string): Uint8Array {
 
 const U64_MAX = (1n << 64n) - 1n
 
-/** A u64 → 8 big-endian bytes (matches the on-chain decode in `seal_policies::timelock`). */
+/** A u64 → 8 big-endian bytes (matches the on-chain decode in `sealed_storage::timelock`). */
 export function u64beBytes(v: number | bigint): Uint8Array {
   if (typeof v === 'number' && !Number.isSafeInteger(v)) {
     throw new Error(`u64 must be a safe integer (got ${String(v)}); pass a bigint for larger values`)

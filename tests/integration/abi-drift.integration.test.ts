@@ -1,5 +1,5 @@
 // ABI drift: every Move call the builders and policy providers make must still exist on the
-// recorded testnet `seal_policies` package, with the same visibility, type-parameter count and
+// recorded testnet `sealed_storage` package, with the same visibility, type-parameter count and
 // parameter count (a trailing TxContext is injected by the runtime and not counted). The recorded
 // publishedAt must be the latest version. Run with `npm run test:integration` (sets SEAL_TESTNET).
 import { describe, it, expect } from 'vitest'
@@ -16,7 +16,7 @@ const TX_CONTEXT = normalizeStructTag('0x2::tx_context::TxContext')
 const isTxContext = (p: { body: { $kind: string; datatype?: { typeName: string } } }) =>
   p.body.$kind === 'datatype' && !!p.body.datatype && normalizeStructTag(p.body.datatype.typeName) === TX_CONTEXT
 
-describe.skipIf(!RUN)('ABI drift (real testnet seal_policies package)', () => {
+describe.skipIf(!RUN)('ABI drift (real testnet sealed_storage package)', () => {
   const client = new SuiGrpcClient({ network: 'testnet', baseUrl: BASE_URL })
 
   it('recorded publishedAt is the latest package version', async () => {

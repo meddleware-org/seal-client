@@ -55,7 +55,7 @@ function approveTx() {
 const explain = (client: RefusalClient) =>
   explainApproveRefusal(client, approveTx(), { sender: SENDER, policyPackageIds: [ORIGINAL, PUBLISHED] })
 
-describe('explainApproveRefusal: every abort of the seal_policies table', () => {
+describe('explainApproveRefusal: every abort of the sealed_storage table', () => {
   for (const abort of POLICY_ABORTS) {
     it(`${abort.module}::${abort.name} (${abort.code}) is refused with its name`, async () => {
       const { client } = fakeClient(() => abortResult(abort.module, abort.code))

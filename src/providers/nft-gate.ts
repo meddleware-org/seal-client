@@ -19,7 +19,7 @@ export interface NftGateParams {
  * therefore comes from the nonce alone, so it is sized for a negligible birthday-collision
  * probability across an effectively unbounded ciphertext population per gate. (The identity is not
  * secret — it is stored verbatim in the manifest — so this is a uniqueness/domain-separation
- * budget, not a secrecy budget.) The width is fixed by the on-chain `seal_policies::nft_gate`
+ * budget, not a secrecy budget.) The width is fixed by the on-chain `sealed_storage::nft_gate`
  * identity layout `[32-byte gate id][16-byte nonce]`; do not change one side only. See SECURITY.md.
  */
 const NONCE_LEN = 16

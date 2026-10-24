@@ -36,7 +36,7 @@ export function buildPublishSealedContentTransaction(target: SealPolicyTarget, i
 }
 
 /**
- * Append `seal_policies::sealed_content::publish(...)` to `tx`. Sharing a `SealedContent` makes the
+ * Append `sealed_storage::sealed_content::publish(...)` to `tx`. Sharing a `SealedContent` makes the
  * content discoverable by a gate's pass-holders (via the `SealedContentPublished` event). The
  * pointer grants nothing on its own — confidentiality is enforced by Seal + `nft_gate`.
  *
@@ -145,7 +145,7 @@ export interface SealEventsClient {
 }
 
 export interface ListSealedContentOptions {
-  /** The `seal_policies` package's original id. */
+  /** The `sealed_storage` package's original id. */
   originalId: string
   gateId: string
   /** Target number of pointers (default 50, at most 200). */

@@ -30,7 +30,7 @@ export interface RefusalExplanation {
   kind: 'allowed' | 'refused' | 'unknown'
   /**
    * `refused` only: the name of the policy abort (`E_GATE_PAUSED`, `E_EXHAUSTED`, `E_WRONG_GATE`, `E_TOO_EARLY`,
-   * `E_WRONG_VERSION`, …), or {@link REASON_NOT_OWNER}. Absent when the abort is not a `seal_policies` abort
+   * `E_WRONG_VERSION`, …), or {@link REASON_NOT_OWNER}. Absent when the abort is not a `sealed_storage` abort
    * that this package knows.
    */
   reason?: string
@@ -80,7 +80,7 @@ const NOT_OWNER_TEXT = /not signed by the correct sender|is owned by account add
  * (network, a node that rejects the build) is returned as `kind: 'unknown'` with the error as `cause`.
  *
  * Pass `policyPackageIds` (the policy package's original id and published-at) so an abort from another package's
- * module of the same name is not named as a `seal_policies` abort.
+ * module of the same name is not named as a `sealed_storage` abort.
  */
 export async function explainApproveRefusal(
   client: RefusalClient,

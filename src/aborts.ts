@@ -1,4 +1,4 @@
-// Abort codes of the `seal_policies` Move modules, keyed by (module, code).
+// Abort codes of the `sealed_storage` Move modules, keyed by (module, code).
 //
 // The small codes overlap: `nft_gate`, `timelock`, `config` and `sealed_content` all use `1`, and `access_gate`
 // reuses small integers too, so a bare code means nothing. A client that wants to tell a user "this gate is
@@ -6,10 +6,10 @@
 // The table below mirrors the constants in `sealed-storage-sui/sources/*.move` (a test reads them when that
 // checkout is next to this one).
 
-/** A `seal_policies` module that can abort. */
+/** A `sealed_storage` module that can abort. */
 export type PolicyModule = 'config' | 'nft_gate' | 'timelock' | 'sealed_content'
 
-/** One abort code of a `seal_policies` module. */
+/** One abort code of a `sealed_storage` module. */
 export interface PolicyAbort {
   module: PolicyModule
   code: number
@@ -21,7 +21,7 @@ export interface PolicyAbort {
   advice: string
 }
 
-/** Every abort code the `seal_policies` modules define. */
+/** Every abort code the `sealed_storage` modules define. */
 export const POLICY_ABORTS: readonly PolicyAbort[] = [
   {
     module: 'config',
@@ -102,7 +102,7 @@ export const POLICY_ABORTS: readonly PolicyAbort[] = [
   },
 ]
 
-/** The abort of `module` with `code`, or undefined when `seal_policies` defines none. */
+/** The abort of `module` with `code`, or undefined when `sealed_storage` defines none. */
 export function describePolicyAbort(module: string, code: number | bigint | string): PolicyAbort | undefined {
   let wanted: bigint
   try {
@@ -195,16 +195,16 @@ function sameAddress(a: string, b: string): boolean {
 }
 
 /**
- * Name a `seal_policies` abort. The abort is read with {@link parseMoveAbort} and looked up by
+ * Name a `sealed_storage` abort. The abort is read with {@link parseMoveAbort} and looked up by
  * (module, code), never by the code alone.
  *
  * Pass `policyPackageIds` (the policy package's original id and published-at) to be sure the abort came from
- * `seal_policies` and not from a package that has a module of the same name: an abort whose package is not in
+ * `sealed_storage` and not from a package that has a module of the same name: an abort whose package is not in
  * the list, or whose package is not reported at all, is then not named. Without it any package's
  * `nft_gate`/`config`/`timelock`/`sealed_content` module matches, which is only as safe as the caller's
  * knowledge of what it called.
  *
- * Returns undefined when the input holds no abort, the module is not a `seal_policies` module (for example an
+ * Returns undefined when the input holds no abort, the module is not a `sealed_storage` module (for example an
  * `access_gate` abort) or the code is not defined.
  */
 export function classifyPolicyAbort(

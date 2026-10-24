@@ -1,7 +1,7 @@
 # @meddleware/sealed-storage-client
 
 Modular [Seal](https://seal-docs.wal.app/) encryption for Sui — the client half of Meddleware
-**Sealed Storage**. Pairs with the [`seal_policies`](https://github.com/meddleware-org/sealed-storage-sui)
+**Sealed Storage**. Pairs with the [`sealed_storage`](https://github.com/meddleware-org/sealed-storage-sui)
 Move package (each policy provider here mirrors one Move module).
 
 ## Install
@@ -87,7 +87,7 @@ header names a different identity or policy package than expected.
 
 ## Package ids
 
-`seal_policies` has two package ids per network, and they differ once the package is upgraded:
+`sealed_storage` has two package ids per network, and they differ once the package is upgraded:
 
 - **`originalId`** — Seal binds identities to it. It is used to encrypt, to scope the SessionKey,
   and to match events.
@@ -104,8 +104,8 @@ All three come from `@meddleware/sealed-storage-client/deployments`, which is ge
 
 ## Telling aborts apart
 
-The small abort codes of the `seal_policies` modules overlap (`nft_gate`, `timelock`, `config` and `sealed_content` all use `1`), so read the
-**module and the code** together, never the code alone. `classifyPolicyAbort` does this for the `seal_policies` modules:
+The small abort codes of the `sealed_storage` modules overlap (`nft_gate`, `timelock`, `config` and `sealed_content` all use `1`), so read the
+**module and the code** together, never the code alone. `classifyPolicyAbort` does this for the `sealed_storage` modules:
 
 ```ts
 import { classifyPolicyAbort } from '@meddleware/sealed-storage-client'
@@ -219,7 +219,7 @@ page.pointers // newest first; page.cursor continues
 
 ## Adding a policy type
 
-1. Add a Move module `seal_policies::<policy>` exposing `entry fun seal_approve(id, …)`.
+1. Add a Move module `sealed_storage::<policy>` exposing `entry fun seal_approve(id, …)`.
 2. Implement a `SealPolicyProvider` here whose `buildId`/`buildApprove` match that module, and whose
    `verifyId` checks the identity layout (required — `decrypt` calls it before every approve).
 3. `registry.register(myProvider)` (a type that is already registered is refused; pass `{ replace: true }` to replace one on purpose). No changes to existing providers or the controller. A provider may also implement `parseParams` so `parseSealedManifest(raw, registry)` validates a manifest's params at import.

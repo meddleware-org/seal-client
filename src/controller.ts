@@ -26,7 +26,7 @@ export interface SealControllerConfig {
   /** A Sui client exposing the core API (e.g. `SuiGrpcClient` from `@mysten/sui/grpc`). */
   suiClient: SealCompatibleClient
   /**
-   * The `seal_policies` package's **original id**: the Seal identity namespace (encrypt, the
+   * The `sealed_storage` package's **original id**: the Seal identity namespace (encrypt, the
    * ciphertext check) and the SessionKey scope. It never changes across upgrades.
    */
   originalId: string
@@ -56,7 +56,7 @@ export interface SealControllerConfig {
    */
   checkShareConsistency?: boolean
   /**
-   * The `access_gate` package's original id that `seal_policies` links. When set, `encrypt` for the
+   * The `access_gate` package's original id that `sealed_storage` links. When set, `encrypt` for the
    * `nft-gate` policy reads the gate first and refuses one that is not a `Gate` of that package
    * (content sealed to it could never be decrypted).
    */
