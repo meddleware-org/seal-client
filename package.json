@@ -54,18 +54,18 @@
     "@meddleware/access-gate-client": "^0.0.10"
   },
   "peerDependencies": {
-    "@mysten/seal": "^1.4.18",
+    "@mysten/seal": "^1.5.1",
     "@mysten/sui": "^2.33.2"
   },
   "devDependencies": {
     "@meddleware/sealed-storage-sui": "0.0.10",
-    "@mysten/seal": "^1.4.18",
+    "@mysten/seal": "^1.5.1",
     "@mysten/sui": "^2.33.2",
     "@types/node": "~26.6.5",
-    "eslint": "^10.11.0",
+    "eslint": "^10.13.0",
     "jiti": "^2.7.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.70.1",
+    "typescript-eslint": "^8.72.0",
     "vitest": "~5.0.2"
   },
   "sideEffects": false,
